@@ -1,0 +1,11 @@
+# Extends gitleaks' default rules. The only allowances are documentation placeholders, which look
+# like secrets but aren't.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documentation placeholders"
+regexes = [
+  '''placeholder-replaced-by-federated-credential''',
+  '''00000000-0000-0000-0000-000000000000''',
+]

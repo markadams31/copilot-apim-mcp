@@ -1,0 +1,129 @@
+openapi: 3.0.1
+info:
+  title: Contoso internal systems API
+  version: "2.0"
+  description: Contoso's internal systems, exposed to Copilot Studio agents as MCP tools through the gateway.
+# Each operation's operationId is a tool name, and its description is what the agent's orchestrator reads
+# to decide when to call it. How the tool authenticates is stated in the description, not the name.
+paths:
+  /directory/me:
+    get:
+      operationId: directory_get_my_profile
+      summary: Get the signed-in person's directory profile
+      description: >-
+        Returns the signed-in person's name, job title, department and email from the company
+        directory. Runs as the signed-in person (delegated access), so it returns only what they could
+        see themselves. Use when the person asks who they are, their job title or their department.
+      responses:
+        "200":
+          description: The person's directory profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  displayName: { type: string }
+                  jobTitle: { type: string, nullable: true }
+                  department: { type: string, nullable: true }
+                  mail: { type: string, nullable: true }
+                  userPrincipalName: { type: string }
+  /finance/cost-centres:
+    get:
+      operationId: finance_list_cost_centres
+      summary: List Contoso's cost centres
+      description: >-
+        Lists Contoso's cost centres: code, name and department. The service reads them with its own
+        identity (app-only access), so it works for people without database access; only people with
+        the Cost Centres reader role may use it. Use when the person asks which cost centres exist or
+        which code to use.
+      responses:
+        "200":
+          description: The cost centres, and the database identity that read them
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queried_as: { type: string }
+                  database_user: { type: string }
+                  requested_by: { type: string }
+                  cost_centres:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code: { type: string }
+                        name: { type: string }
+                        department: { type: string }
+  /finance/spend:
+    get:
+      operationId: finance_query_spend
+      summary: Total spending by category for a date range
+      description: >-
+        Totals Contoso's spending by category for a date range. Parameters: category (travel, software,
+        training, equipment or all), from and to (dates, at most 12 months apart). Runs as the signed-in
+        person (delegated access); only members of Contoso Finance Readers may query spending, and the
+        database refuses anyone else. Use when the person asks how much was spent, on what, and when.
+      # All three are required on purpose. API Management's OpenAPI import puts required query parameters
+      # in the operation's URL template, and its MCP layer then appends optional ones with a second "?",
+      # which corrupts the request (seen 2026-11-11). With every parameter required, nothing is appended.
+      parameters:
+        - name: category
+          in: query
+          required: true
+          description: Spending category to total, or all for every category.
+          schema:
+            type: string
+            enum: [travel, software, training, equipment, all]
+        - name: from
+          in: query
+          required: true
+          description: First date to include (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          description: Last date to include (YYYY-MM-DD), at most 12 months after from.
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Totals per category, and the database identity that ran the query
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queried_as: { type: string }
+                  from: { type: string }
+                  to: { type: string }
+                  totals:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        category: { type: string }
+                        amount_aud: { type: number }
+                        transactions: { type: integer }
+        "400":
+          description: The parameters were rejected (by the gateway or the backend)
+  /diagnostics/caller:
+    get:
+      operationId: diagnostics_caller
+      summary: Identify the caller from the sign-in token (diagnostics; not an MCP tool)
+      description: >-
+        Returns the signed-in person's name and the ID of the agent app that is calling, read from the
+        sign-in token, without calling any other system. Used by the smoke test; not offered to agents.
+      responses:
+        "200":
+          description: The caller, from the token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { type: string }
+                  calling_app: { type: string }

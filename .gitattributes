@@ -1,0 +1,9 @@
+# Normalise line endings, and keep generated and binary files out of diffs and language stats.
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+docs/images/** -diff
+docs/diagrams/*.svg linguist-generated=true -diff
+docs/diagrams/icons/*.svg linguist-vendored=true
+.terraform.lock.hcl linguist-generated=true

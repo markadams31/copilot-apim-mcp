@@ -1,0 +1,6 @@
+# Lint and format rules for the Python in backend/, scripts/ and docs/diagrams/.
+target-version = "py312"
+extend-exclude = [".terraform", ".python_packages"]
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]

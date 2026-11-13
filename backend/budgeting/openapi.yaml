@@ -1,0 +1,114 @@
+openapi: 3.0.1
+info:
+  title: Contoso budgeting API
+  version: "1.0"
+  description: >-
+    Contoso's budgeting system (forecasts by cost centre). A separate backend from finance spending;
+    the gateway exposes chosen operations as MCP tools. Cost-centre codes are this system's own
+    reference data and happen to match finance's codes.
+# Each operation's operationId is a tool name, and its description is what the agent's orchestrator reads.
+paths:
+  /forecasts:
+    get:
+      operationId: budgeting_get_forecast
+      summary: Get cost-centre forecasts for a fiscal year
+      description: >-
+        Returns forecast amounts (AUD) for Contoso cost centres for one fiscal year from the budgeting
+        system. Parameters: cost_centre (a code such as CC-1001, or all) and fiscal_year (calendar year).
+        Runs as the signed-in person (delegated access); only members of Contoso Budget Editors may
+        read forecasts, and the budgeting database refuses anyone else. Use when the person asks what
+        the forecast is, or before updating one.
+      parameters:
+        - name: cost_centre
+          in: query
+          required: true
+          description: Cost-centre code to return, or all for every cost centre.
+          schema:
+            type: string
+        - name: fiscal_year
+          in: query
+          required: true
+          description: Calendar year of the forecast (for example 2026).
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+      responses:
+        "200":
+          description: Forecast rows, and the database identity that read them
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queried_as: { type: string }
+                  fiscal_year: { type: integer }
+                  forecasts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cost_centre: { type: string }
+                        name: { type: string }
+                        fiscal_year: { type: integer }
+                        amount_aud: { type: number }
+                        updated_at: { type: string }
+                        updated_by: { type: string }
+        "400":
+          description: The parameters were rejected
+        "403":
+          description: The budgeting database refused the person
+    put:
+      operationId: budgeting_update_cost_centre_forecast
+      summary: Update one cost-centre forecast
+      description: >-
+        Sets the forecast amount (AUD) for one Contoso cost centre and fiscal year in the budgeting
+        system. Parameters: cost_centre (a code such as CC-1001), fiscal_year (calendar year), and
+        amount_aud (non-negative, at most 10000000). Runs as the signed-in person (delegated access);
+        only members of Contoso Budget Editors may write, and the budgeting database records who made
+        the change. Use when the person asks to set, change or update a cost-centre forecast. This
+        writes immediately with no further approval step.
+      parameters:
+        - name: cost_centre
+          in: query
+          required: true
+          description: Cost-centre code to update (for example CC-1001).
+          schema:
+            type: string
+        - name: fiscal_year
+          in: query
+          required: true
+          description: Calendar year of the forecast (for example 2026).
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+        - name: amount_aud
+          in: query
+          required: true
+          description: New forecast amount in AUD (0 to 10000000).
+          schema:
+            type: number
+            minimum: 0
+            maximum: 10000000
+      responses:
+        "200":
+          description: The updated forecast, previous amount if any, and who wrote it
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queried_as: { type: string }
+                  cost_centre: { type: string }
+                  fiscal_year: { type: integer }
+                  previous_amount_aud: { type: number, nullable: true }
+                  amount_aud: { type: number }
+                  updated_at: { type: string }
+                  updated_by: { type: string }
+        "400":
+          description: The parameters were rejected
+        "403":
+          description: The budgeting database refused the person
+        "404":
+          description: Unknown cost-centre code

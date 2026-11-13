@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: terraform
+    directories:
+      - /infra/profiles/secure
+      - /infra/profiles/rapid
+    schedule:
+      interval: monthly
+  - package-ecosystem: pip
+    directories:
+      - /backend
+      - /backend/budgeting
+    schedule:
+      interval: monthly

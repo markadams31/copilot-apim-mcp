@@ -1,0 +1,32 @@
+<policies>
+  <inbound>
+    <base />
+    <!-- Only the client apps of the agents on this server, only tokens for the gateway API, only with Tools.Read. -->
+    <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization"
+        failed-validation-httpcode="401" failed-validation-error-message="Unauthorized for this agent's tools.">
+      <client-application-ids>
+%{ for id in agent_app_ids ~}
+        <application-id>${id}</application-id>
+%{ endfor ~}
+      </client-application-ids>
+      <audiences>
+        <audience>${api_client_id}</audience>
+        <audience>api://${api_client_id}</audience>
+      </audiences>
+      <required-claims>
+        <claim name="scp" match="any" separator=" ">
+          <value>Tools.Read</value>
+        </claim>
+      </required-claims>
+    </validate-azure-ad-token>
+  </inbound>
+  <backend>
+    <forward-request />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

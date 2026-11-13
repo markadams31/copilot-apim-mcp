@@ -1,0 +1,134 @@
+<policies>
+  <inbound>
+    <base />
+    <!--
+      Authorization for EVERY path into the REST API: MCP tool calls from any agent's MCP server,
+      and direct calls to the REST facade (/tools/...). An MCP server's policy only guards
+      that server's front door; without this, an agent could skip it and call /tools/<op> directly.
+    -->
+    <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization"
+        failed-validation-httpcode="401" failed-validation-error-message="Unauthorized."
+        output-token-variable-name="jwt">
+      <client-application-ids>
+%{ for id in agent_app_ids ~}
+        <application-id>${id}</application-id>
+%{ endfor ~}
+      </client-application-ids>
+      <audiences>
+        <audience>${api_client_id}</audience>
+        <audience>api://${api_client_id}</audience>
+      </audiences>
+      <required-claims>
+        <claim name="scp" match="any" separator=" ">
+          <value>Tools.Read</value>
+        </claim>
+      </required-claims>
+    </validate-azure-ad-token>
+    <!--
+      Per-operation allow-list, generated from local.agents: "<operation>|<agent client id>".
+      Deny by default: an operation no agent lists is refused for everyone.
+    -->
+    <choose>
+      <when condition='@(!new [] { ${allowed_pairs} }.Contains(context.Operation.Id + "|" + context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("azp", "")))'>
+        <!-- Audit: who (user oid), which agent (azp), which tool, and the decision. No payloads. -->
+        <trace source="agent-gateway-authz" severity="information">
+          <message>denied</message>
+          <metadata name="decision" value="denied" />
+          <metadata name="agent_app_id" value='@(context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("azp", ""))' />
+          <metadata name="user_oid" value='@(context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("oid", ""))' />
+          <metadata name="operation" value="@(context.Operation.Id)" />
+        </trace>
+        <return-response>
+          <set-status code="403" reason="Forbidden" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>{"error": "this agent is not allowed to use this tool"}</set-body>
+        </return-response>
+      </when>
+    </choose>
+%{ for op, role in tool_roles ~}
+    <!--
+      App-only tool: the backend reads data as its own identity, so the data source can't tell users
+      apart. The gateway therefore requires the user's token to carry the app role for this tool.
+      A user without it gets a 403 here (recorded in the gateway log, not in the authz trace).
+    -->
+    <choose>
+      <when condition='@(context.Operation.Id == "${op}")'>
+        <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization"
+            failed-validation-httpcode="403"
+            failed-validation-error-message="This user is not assigned the role for this tool.">
+          <audiences>
+            <audience>${api_client_id}</audience>
+            <audience>api://${api_client_id}</audience>
+          </audiences>
+          <required-claims>
+            <claim name="roles" match="any">
+              <value>${role}</value>
+            </claim>
+          </required-claims>
+        </validate-azure-ad-token>
+      </when>
+    </choose>
+%{ endfor ~}
+    <!--
+      Parameterised tools: one validate-parameters per inbound section (APIM limit). Schema comes from
+      each API's OpenAPI import; the 12-month spend limit isn't expressible there, so it is checked below.
+      The backend validates again.
+    -->
+    <choose>
+      <when condition='@(new [] { "finance_query_spend", "budgeting_get_forecast", "budgeting_update_cost_centre_forecast" }.Contains(context.Operation.Id))'>
+        <validate-parameters specified-parameter-action="prevent" unspecified-parameter-action="prevent">
+          <headers specified-parameter-action="ignore" unspecified-parameter-action="ignore" />
+        </validate-parameters>
+      </when>
+    </choose>
+    <choose>
+      <when condition='@(context.Operation.Id == "finance_query_spend")'>
+        <!-- validate-parameters has already rejected malformed dates, so Parse is safe here (the
+             expression sandbox doesn't allow DateTime.TryParse). -->
+        <choose>
+          <when condition='@{
+              var start = DateTime.Parse(context.Request.Url.Query.GetValueOrDefault("from", "0001-01-01"));
+              var end = DateTime.Parse(context.Request.Url.Query.GetValueOrDefault("to", "0001-01-01"));
+              return end &lt; start || (end - start).TotalDays &gt; 366;
+            }'>
+            <return-response>
+              <set-status code="400" reason="Bad Request" />
+              <set-header name="Content-Type" exists-action="override">
+                <value>application/json</value>
+              </set-header>
+              <set-body>{"error": "from and to must be dates (YYYY-MM-DD), to on or after from, at most 12 months apart", "rejected_by": "gateway"}</set-body>
+            </return-response>
+          </when>
+        </choose>
+      </when>
+    </choose>
+    <trace source="agent-gateway-authz" severity="information">
+      <message>allowed</message>
+      <metadata name="decision" value="allowed" />
+      <metadata name="agent_app_id" value='@(context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("azp", ""))' />
+      <metadata name="user_oid" value='@(context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("oid", ""))' />
+      <metadata name="operation" value="@(context.Operation.Id)" />
+    </trace>
+    <!--
+      Throttle per agent AND per user: a runaway agent loop or a misused token can't flood the
+      backend or exfiltrate in bulk. 429 with Retry-After beyond the limit.
+    -->
+    <rate-limit-by-key calls="${rate_limit_calls}" renewal-period="60"
+        counter-key='@(context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("azp", "") + "|" + context.Variables.GetValueOrDefault&lt;Jwt&gt;("jwt").Claims.GetValueOrDefault("oid", ""))' />
+    <!-- Forward the caller's token to the backend (MCP tool invocations don't always pass it). -->
+    <set-header name="Authorization" exists-action="override">
+      <value>@(context.Request.Headers.GetValueOrDefault("Authorization", ""))</value>
+    </set-header>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

@@ -1,0 +1,27 @@
+# Terraform: state holds secrets and tenant identifiers; plans and local values stay local.
+# (.terraform.lock.hcl IS committed so everyone gets the same provider versions.)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.auto.tfvars
+infra/profiles/*/terraform.tfvars
+
+# Sign-in caches, VPN material and environment files
+.msal_cache.json
+vpn/
+.env
+.env.*
+
+# Python
+__pycache__/
+.python_packages/
+.venv/
+.ruff_cache/
+*.zip
+
+# Local tool settings
+.claude/
+.icon-packs/

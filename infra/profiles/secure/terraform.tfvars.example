@@ -1,0 +1,29 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. None of these are secrets, but they identify your
+# tenant and people, so they stay local.
+
+# The EXISTING work account that builds the Copilot Studio agents (docs/deploy.md).
+maker_upn = "maker@yourtenant.onmicrosoft.com"
+
+# One entry per Copilot Studio MCP connector, added after the maker creates it
+# (docs/add-mcp-tool-to-agent.md). Key = the connector's name, the last part of its callback URL.
+# After an environment recreate, replace this block entirely: stale keys cause AADSTS50011.
+copilot_connectors = {
+  # "new-5fcontoso-20finance-20tools-5f..." = {
+  #   agent        = "finance-assistant"             # employee-assistant or finance-assistant
+  #   redirect_uri = "https://global.consent.azure-apim.net/redirect/<connector name>"
+  #   subject      = "/eid1/c/pub/t/<tenant>/a/<app>/<region>-001_<connector name>"
+  # }
+}
+
+# Optional (descriptions: infra/modules/contoso-gateway/variables.tf).
+# prefix = null                                    # null = the profile's default (contoso / contosodev)
+# alert_email = "you@yourtenant.onmicrosoft.com"   # the alert rules email this address once it is verified
+# cost_centres_user_upns = null                    # who holds CostCentres.Read; null = the maker
+# finance_reader_upns = null                       # who is in Finance Readers; null = the maker
+# budget_editor_upns = null                        # who is in Budget Editors; null = the maker
+# environment_type = "Sandbox"                     # default; never Developer (AGENTS.md). Link PAYG for Copilot harness.
+# allow_workflow_agents = false                    # true lets a workflow call an agent (the Agents connector)
+# allow_agent_triggers = false                     # true lets agents have triggers (Copilot Studio connector)
+
+# Secure profile only.
+# allow_vpn_to_backends = false                    # true opens the backends to VPN clients (deploys, SQL setup)
