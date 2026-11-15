@@ -220,7 +220,7 @@ file.
 
 | | Rapid profile | Secure profile |
 |---|---|---|
-| Steps | 3, 6 to 10 (and 4 and 5 if the environment has a billing plan) | All |
+| Steps | 3, 6 to 10 (and 4 and 5 if the environment has a billing plan; step 5 is never optional if a plan exists) | All |
 | Time, as measured | About 10 minutes | About 35 minutes |
 
 ### Steps
@@ -256,8 +256,11 @@ file.
 
    A Developer environment with no billing plan deletes cleanly through Terraform; skip this step.
 
-5. **Delete the billing plan** (Licensing → Billing plans) before its resource group goes, or the plan
-   is orphaned.
+5. **Delete the billing plan** (Licensing → Billing plans → select it → Delete billing plan) before the
+   resource group goes. Terraform doesn't manage the plan, so a destroy never removes it. The plan's
+   Power Platform account resource sits in the resource group, so deleting the group first leaves the
+   plan in the admin center as "Disabled by linked resource", pointing at nothing. Always do this step
+   when a billing plan was created for the deployment.
 
 6. **Remove API Management's child resources from state.** Deleting them one by one through the
    management API times out (422); deleting the instance removes them anyway:
@@ -290,6 +293,7 @@ file.
    |---|---|
    | State is empty | `terraform state list` |
    | No resource group | `az group list --query "[?contains(name,'<prefix>')].name"` |
+   | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
    | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
    | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
 

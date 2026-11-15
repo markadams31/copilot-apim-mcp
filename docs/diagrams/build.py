@@ -26,6 +26,7 @@ ICONS = HERE / "icons"
 UPDATED = "2026-11-09"
 NEW = "2026-11-12"  # diagrams written or changed on this date
 NEWER = "2026-11-13"  # diagrams redrawn for the three-system scenario
+NEWEST = "2026-11-16"  # diagrams added on this date
 FONT = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 
 # Palette: Microsoft Fluent neutrals plus a few semantic colours. Every colour is paired with a
@@ -1783,6 +1784,134 @@ def evals_loop():
     d.save("evals-loop")
 
 
+def connect_agent():
+    """The components that connect a Copilot Studio agent to an MCP server, as the three OAuth roles."""
+    d = Diagram(
+        1200,
+        700,
+        "What connects a Copilot Studio agent to an MCP server",
+        "OAuth roles: the connector is the client · Entra ID is the authorization server · API Management is the protected resource",
+        NEWEST,
+    )
+
+    # -- The client side: the Power Platform environment ----------------------------------------
+    d.group(
+        24,
+        96,
+        560,
+        230,
+        "Power Platform environment",
+        "cloud",
+        "power-platform",
+        "Sandbox · Managed Environment",
+    )
+    d.node(84, 215, "copilot-studio", "Agent", size=40)
+    d.group(
+        150, 155, 200, 120, "Custom connector", "plain", sublabel="for the MCP server"
+    )
+    d.node(200, 240, "managed-identity", "Managed identity", size=30, pos="right")
+    d.service(470, 215, 160, 70, "Connection", "one per user")
+    d.arrow([(108, 215), (150, 215)])
+    d.arrow([(350, 215), (390, 215)])
+
+    # -- The protected resource: API Management -----------------------------------------------
+    d.group(
+        700,
+        96,
+        476,
+        230,
+        "Azure API Management",
+        "cloud",
+        "apim",
+        "Hosts the MCP server",
+    )
+    d.service(938, 215, 420, 56, "MCP server", "one business domain")
+
+    # -- The authorization server: Microsoft Entra ID ------------------------------------------
+    d.group(
+        24,
+        400,
+        1152,
+        275,
+        "Microsoft Entra ID",
+        "cloud",
+        "entra-id",
+        "Your tenant",
+    )
+    d.node(
+        150,
+        525,
+        "app-registration",
+        "Agent app registration",
+        "the agent's identity: its client ID is\nset in the agent's connector\nredirect URI for the connector\na federated credential for the\nconnector's managed identity\nAPI permission: Tools.Read",
+        size=40,
+    )
+    d.node(
+        420,
+        525,
+        "entra-id",
+        "Token endpoint",
+        "checks the connector's credential,\nissues the user's token",
+        size=40,
+    )
+    d.node(
+        900,
+        525,
+        "app-registration",
+        "Gateway API app registration",
+        "api://<api_client_id>\nscope Tools.Read\nthe audience of every token",
+        size=40,
+    )
+
+    # -- Flows -------------------------------------------------------------------------------------
+    d.arrow(
+        [(300, 275), (300, 420), (408, 420), (408, 498)],
+        color=PURPLE,
+        num=1,
+        num_at=(300, 365),
+        label="Sign in as the agent's app. The connector\nproves itself with its managed identity,\nnot a client secret.",
+        at=(288, 350),
+        anchor="end",
+    )
+    d.arrow(
+        [(432, 498), (432, 440), (470, 440), (470, 250)],
+        color=PURPLE,
+        num=2,
+        num_at=(470, 365),
+        label="A token for\nthe gateway API",
+        at=(482, 360),
+    )
+    d.arrow([(550, 215), (728, 215)], num=3, num_at=(640, 215))
+    d._label(634, 178, "Each tool call carries\nthe user's token", BLUE, "middle")
+    d.arrow(
+        [(900, 326), (900, 498)],
+        color=GREY,
+        dash="4 3",
+        num=4,
+        num_at=(900, 365),
+        label="The server checks the token: signature,\naudience, scope and the calling agent.",
+        at=(912, 360),
+    )
+    # trust and issuing, inside Entra ID (dashed)
+    d.arrow(
+        [(398, 525), (182, 525)],
+        color=GREY,
+        dash="4 3",
+        label="trusts it through the\nfederated credential",
+        at=(290, 506),
+        anchor="middle",
+    )
+    d.arrow(
+        [(442, 525), (868, 525)],
+        color=GREY,
+        dash="4 3",
+        label="issues it for this API",
+        at=(655, 518),
+        anchor="middle",
+    )
+    d.save("connect-agent")
+
+
 if __name__ == "__main__":
     solution_architecture()
     networking_topology()
@@ -1797,3 +1926,4 @@ if __name__ == "__main__":
     access_models()
     access_matrix()
     auth_app_only()
+    connect_agent()

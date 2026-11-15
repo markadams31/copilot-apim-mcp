@@ -283,7 +283,7 @@ an agent on top of it:
 - **Billing plan outlives the environment.** `contosodevpayg` survived the teardown and Terraform recreated
   the same resource group name. The new Sandbox was created by Terraform with no `billing_policy_id`
   (so a guest principal works), then linked in the admin center (Licensing → Billing plans → Edit → Add or
-  remove environments). Delete the plan before destroying its resource group.
+  remove environments). Delete the plan before destroying its resource group (deploy.md teardown step 5); Terraform never removes it, and the next build needs a new plan.
 - **A new Sandbox gives the maker no role.** Copilot Studio silently opens the Default environment until
   the maker is added: admin center → the environment → Membership → Add me. The new Copilot Studio has
   no environment picker; use More → Open classic experience, which asks you to accept a terms dialog.
