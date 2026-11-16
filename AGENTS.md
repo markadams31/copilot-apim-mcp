@@ -196,6 +196,11 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 - Enabling the knowledge feature to clear the generative-answers error: it weakens the allow-list.
 - Searching for the connector in the publish error: the `BlockedConnector` message doesn't name it.
   (This was seen on the Developer environment; it didn't recur on the Sandbox.)
+- Raising `runtime_version` on a Flex Consumption Function app and deploying with the remote build
+  (`--build-remote true`). The app showed Python 3.13, but the build host still ran 3.12.2, so
+  `azure-functions` 2.x (needs 3.13 or newer) couldn't be installed, three times, even after a restart.
+  `scripts/deploy-function.sh` now builds the packages locally for Linux and Python 3.13 and ships them
+  in the zip; keep its `python_version` equal to `runtime_version` in `backend.tf`.
 
 ## External guidance to check your work against
 
