@@ -445,3 +445,25 @@ and chats with the published agent; the agent called both tools through the gate
   It is a test tool; it is deliberately not part of the repo's deliverable, so keep it out of the reference solution.
 - **Throwaway:** the registration was "THROWAWAY Copilot Studio SPA test (delete me)" created with
   `POST /applications`; delete it with `az ad app delete --id <appId>` and stop the local server when done.
+
+## What a long chat costs, Restart, and Monitor (2026-11-16)
+
+- **"Restart" and "Start over" don't reset a Teams chat with a Microsoft Copilot harness agent.** They are ordinary
+  messages: the agent replies "I can't clear this chat myself" and still recalls earlier content. The agent's Teams
+  menu has only *About* and *Share app*, so a user cannot start a new conversation; Preview's **New chat** can.
+  Design repeatable tasks so one task never depends on a clean thread (see docs/ai-safety.md, docs/deploy.md).
+- **Conversation cost (Preview's credit counter, estimates).** One question that made about 13 spend calls
+  (`finance_query_spend` has no cost-centre filter, so the agent splits a 12-month question by month) cost 29.55
+  credits. Three follow-ups that needed no new tool calls then added 4.74 together, about 1.6 each, against a
+  fraction of a credit for a fresh short chat. The counter updates minutes after a turn; read it with
+  `button[aria-label*="estimated usage"]` and its parent's text rather than a screenshot.
+- **Monitor works; Preview's History is empty.** *Monitor* lists published-channel sessions with channel names
+  (Teams shows as "Microsoft Teams", the custom web page as "M365 agents SDK client"), credits and tool use.
+  Preview chats don't appear in Monitor or History. Evaluate still failed on a fresh load.
+- **A "soft" confirmation works if you add it to the instructions** (docs/ai-safety.md): append "tell the user the
+  cost centre, year, current and new amounts, and write only after a clear yes in a later message". Edit it in the
+  draft and test in Preview without publishing; restore the original text and Save afterwards.
+- **Employee Assistant in Teams installed first time** (about three hours after the Finance Assistant's third
+  attempt). It needs republishing after you add its tool, and the editor warns "unsaved changes" until you do.
+- **Wizard and connector gotchas** for a second agent are in the section above (409 on a reused name, derived
+  subject, popup blocked when an automated click presses Create).

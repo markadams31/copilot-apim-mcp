@@ -222,6 +222,11 @@ Verified on the Microsoft Copilot harness, rapid profile, in a new trial tenant.
 3. Ask a question that needs a tool. The user sees streamed steps ("Calling directory_get_my_profile…") and then the
    answer. A user who has not connected to the tools yet is asked to sign in to each connection the first time.
 
+**Starting a fresh conversation.** In Teams a user cannot: the agent's menu has only *About* and *Share app*, and typing
+"Restart" or "Start over" does nothing (the agent still remembers earlier messages). Don't rely on users resetting a
+thread between tasks; see [ai-safety.md](ai-safety.md#human-oversight) and
+[AGENTS.md](../AGENTS.md#what-a-long-chat-costs-restart-and-monitor-2026-11-16).
+
 **If Add fails** with "App package can't be uploaded. Unknown Exception", **wait and retry** (give a brand-new tenant a few
 hours). In our run it worked on the third attempt about two hours after the channel was added, with no policy or role
 change. Do not start changing tenant settings first. The Teams admin center ("setting up app management", Actions menus
