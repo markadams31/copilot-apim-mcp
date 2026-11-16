@@ -19,7 +19,7 @@ order of operations from Terraform to the first test. For vocabulary, see [conce
   is public.
 - The steps use the **Microsoft Copilot harness** (Home → **Agent**), which needs a Sandbox with
   pay-as-you-go, or Preview returns `EnforcementUsageCredits`. The connector and Terraform steps are
-  identical on the Standard harness; the portal paths differ ([appendix](#appendix-standard-harness)).
+  identical on the standard harness; the portal paths differ ([appendix](#appendix-standard-harness)).
   The screenshots come from the Standard builder; on the Microsoft Copilot harness use **Tools → Add tool**
   on the single editor page. The field names match.
 
@@ -120,7 +120,7 @@ once you have a role.
 1. Open [Power Apps](https://make.powerapps.com) in the same environment → **Custom connectors**. The
    wizard created a connector with your server name. Select its **edit** (pencil) icon.
 2. Go to **2. Security** and select **Edit**.
-3. Set **Identity Provider** to **Azure Active Directory**, and leave **Enable Service Principal
+3. Set **Identity Provider** to **Microsoft Entra ID**, and leave **Enable Service Principal
    support** ticked.
 4. Under **Secret options**, select **Use managed identity**.
 5. Set:
@@ -143,7 +143,7 @@ once you have a role.
      --url "https://api.powerapps.com/providers/Microsoft.PowerApps/scopes/admin/environments/<environment id>/apis?api-version=2016-11-01&\$filter=IsCustomApi eq true"
    ```
 
-![The connector's Security step with Azure Active Directory as the identity provider and Use managed identity selected.](images/add-mcp-tool/03-connector-managed-identity.png)
+![The connector's Security step with Microsoft Entra ID as the identity provider and Use managed identity selected.](images/add-mcp-tool/03-connector-managed-identity.png)
 
 ## Step 4: Trust the connector in Entra ID (Terraform)
 
@@ -199,7 +199,7 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
    the steps are the same.
 
    ![The server's tools listed with a permission toggle for each.](images/testing/mch-tool-permissions.png)
-4. In **Preview** (Copilot harness) or the **Test your agent** pane (Standard), ask something that
+4. In **Preview** (Microsoft Copilot harness) or the **Test your agent** pane (standard harness), ask something that
    needs a tool, for example *"Who am I according to the company directory?"*, *"What is the FY2026
    forecast for cost centre CC-1001?"*, then *"Update the FY2026 forecast for CC-1001 to AUD 450000."*
    Confirm the activity / "Used tool" line names the expected tool. Then try the rest of the
@@ -245,7 +245,7 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
 Create the agent from Home → **Other ways to build → Agent (Standard)** → **Create**, and wait for
 "Your agent has been provisioned". Tools live under the **Tools** tab; test in **Test your agent**.
 Steps 2 to 5 (MCP server, managed identity, Terraform, connection) are identical. The Standard harness
-can exercise tools in the test pane without Copilot Credits; publishing still needs a Sandbox with
+can exercise tools in the Test your agent pane without Copilot Credits; publishing still needs a Sandbox with
 pay-as-you-go ([deploy.md](deploy.md#which-harness-and-copilot-credits)).
 
 ## Learn more

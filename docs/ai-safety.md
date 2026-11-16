@@ -40,7 +40,7 @@ has been crafted to make it misuse.
 | Choosing the right tool for the question | The model decides from the tools' names and descriptions | 🔲 Worked in every test; not measured |
 | Filling parameters that match what the user asked | The gateway checks that parameters are valid, not that they are what the user meant | ✅ `finance_query_spend` and the forecast tools were filled correctly in Preview; a bad category was not sent |
 | Reporting the tool's result faithfully | The gateway never sees the model's answer | 🔲 Not measured |
-| Saying so when a tool fails | See [silent failure](#silent-failure) | ✅ Observed failing. On the Microsoft Copilot harness the agent reported a stopped backend truthfully; on the Standard harness it often didn't |
+| Saying so when a tool fails | See [silent failure](#silent-failure) | ✅ Observed failing. On the Microsoft Copilot harness the agent reported a stopped backend truthfully; on the standard harness it often didn't |
 | Ignoring instructions inside a tool result | See [prompt injection](#prompt-injection) | ✅ Ignored in thirteen trials across six variants ([probe 1](#probes)) |
 
 ## Prompt injection
@@ -90,7 +90,7 @@ knows about the user, in the same confident tone.
 <summary>Diagram description</summary>
 
 Three panels. Left: Copilot Studio answers fluently with no error and no “Used tool” line. Centre: the
-connection, DNS/VNet lag, or wiring broke so the MCP call never left Copilot Studio. Right: API
+connection, DNS or virtual network lag, or wiring broke so the MCP call never left Copilot Studio. Right: API
 Management has no AppTraces row for that conversation. Footer: detect by absence; alert on failed MCP
 requests (observability).
 </details>
@@ -161,8 +161,8 @@ What is missing, and what each gap means for a reviewer:
 
 An agent started by a schedule or an event has no user in front of it. It runs with the credentials of
 whoever created its connection, so per-user permissions no longer apply and its input (an email, for
-example) is untrusted text that goes straight to the model. A scheduled Standard harness agent was run here, as the
-maker ✅; an unattended Microsoft Copilot harness agent was not tested ⏳. The risks and the test plan are in [going-further.md](going-further.md#agents-that-run-without-a-user).
+example) is untrusted text that goes straight to the model. A scheduled standard harness agent was run here, as the
+maker ✅, and so was an unattended Microsoft Copilot harness agent, started by a workflow with a Recurrence trigger and an Agent node: it ran as the maker ✅ ([testing.md](testing.md#evidence-gaps)). One run each; an unattended run as a different user, and failure behaviour, were not tested ⏳. The risks and the test plan are in [going-further.md](going-further.md#agents-that-run-without-a-user).
 
 ## What is retained
 
@@ -175,7 +175,7 @@ maker ✅; an unattended Microsoft Copilot harness agent was not tested ⏳. The
 
 ## Probes
 
-These probes are the Contoso **safety scorecard** in [testing.md](testing.md#testing-the-agent-evals). Each prediction was
+These probes are the Contoso **safety scorecard** in [testing.md](testing.md#testing-the-agent-evaluations). Each prediction was
 written before the run, so a result can contradict it. Seven were run against the Finance Assistant on the
 Microsoft Copilot harness (rapid profile, Preview). The evidence is in [testing.md](testing.md#ai-safety).
 
@@ -193,7 +193,7 @@ Microsoft Copilot harness (rapid profile, Preview). The evidence is in [testing.
 
 ## Learn more
 
-- [Evals](testing.md#testing-the-agent-evals): Copilot Studio Evaluate plus this probe scorecard, joined to the gateway's logs
+- [Evaluations](testing.md#testing-the-agent-evaluations): Copilot Studio Evaluate plus this probe scorecard, joined to the gateway's logs
 - [Add tools to custom agents](https://learn.microsoft.com/microsoft-copilot-studio/add-tools-custom-agent) (the confirmation setting, standard harness)
 - [Secure access to MCP servers in API Management](https://learn.microsoft.com/azure/api-management/secure-mcp-servers)
 - [Copilot Studio security and governance](https://learn.microsoft.com/microsoft-copilot-studio/security-and-governance)

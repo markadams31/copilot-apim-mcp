@@ -46,7 +46,7 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 
 ## Licensing, credits and environment type
 
-- Standard-harness agents work in the **test pane without credits**. **Publishing** needs a licence:
+- Standard harness agents work in the **Test your agent pane without credits**. **Publishing** needs a licence:
   Agent status says "uses premium features, upgrade to publish" (a warning once the environment is on
   pay-as-you-go). The real publish blocker was **no channel configured**.
 - Published agents and every trigger firing consume Copilot Credits. Pay-as-you-go is billed per use.
@@ -132,7 +132,7 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 - **Never create the connection from the MCP wizard** (and never before managed identity + Terraform
   FIC). Connecting on the old secret shape fails (`ParameterNotDefined: token`) or signs in against a
   redirect Entra doesn't know (`AADSTS50011`). Path that worked (rapid, 2026-11-12): cancel wizard →
-  Custom connectors → Security → Azure AD → **Use managed identity** (tenant id, `api://<api>`,
+  Custom connectors → Security → Microsoft Entra ID → **Use managed identity** (tenant id, `api://<api>`,
   OBO `false`, scope with a **space** not a comma) → Update connector → put redirect+subject in
   tfvars → apply → Power Apps **Connections** (page search, not the global search box) → New
   connection → **OAuth Connection** → Create → pick the work account on the popup → status
@@ -234,12 +234,12 @@ from that review and were not re-opened; check one before relying on it.
 - **The on-behalf-of hop takes delegated scopes, never app roles**, and isn't for app-only callers.
   Azure SQL's only delegated scope is the coarse `user_impersonation`, so least privilege has to be
   enforced in the database (contained users and roles, as `sql-setup.py` does).
-- A Copilot Studio **Agent ID** is a Microsoft-managed identity for governance, created when the agent is
+- A Copilot Studio **agent identity** (Microsoft Entra Agent ID; Copilot Studio labels it "Entra Agent ID") is a Microsoft-managed identity for governance, created when the agent is
   created (standard harness) or first published (Microsoft Copilot harness). Tenants can't mint tokens as
   it, and an agent identity can't start an interactive sign-in, so it doesn't replace the connector's
   client app. Custom connectors and MCP servers add no API permissions to it, and Conditional Access on it
-  is enforced only in Teams today. See [concepts.md](docs/concepts.md#agent-id-and-client-app-registration-two-different-things).
-- **Agent IDs outlive a destroyed environment.** Eight were left behind by earlier teardowns. Check for
+  is enforced only in Teams today. See [concepts.md](docs/concepts.md#agent-identity-and-client-app-registration-two-different-things).
+- **Agent identities outlive a destroyed environment.** Eight were left behind by earlier teardowns. Check for
   them after a destroy (deploy.md teardown step 9) and delete any whose agent is gone.
 
 **Billing and environments**
@@ -264,7 +264,7 @@ from that review and were not re-opened; check one before relying on it.
   connectors. Keep the classic policy in [governance.tf](infra/modules/contoso-gateway/governance.tf).
 
 **Parked, on purpose:** the standalone AI Gateway product (preview, East US 2 and Sweden Central only),
-Foundry's bring-your-own gateway, Agent 365 tool governance, API Center as an MCP catalogue, and
+Microsoft Foundry's bring-your-own gateway, Microsoft Agent 365 tool governance, API Center as an MCP catalogue, and
 continuous access evaluation on the gateway. See [docs/going-further.md](docs/going-further.md#microsofts-ai-gateway-offerings-measured-against-this-design).
 
 ## Teardown
@@ -417,7 +417,7 @@ and chats with the published agent; the agent called both tools through the gate
   folder on `127.0.0.1:5500` (`python3 -m http.server 5500 --bind 127.0.0.1`).
 - **Use `directConnectUrl`, not `environmentId` + `schemaName`, for this harness.** With the environment id and
   schema name the sample reaches the classic runtime and the agent answers "This action doesn't support
-  agents built with the GitHub Copilot harness." Copy the **connection string** from the agent's *Channels →
+  agents built with the GitHub Copilot harness" (the message still uses the old name). Copy the **connection string** from the agent's *Channels →
   + → App → Microsoft 365 Agents SDK* panel into `directConnectUrl`; it points at
   `…/copilotstudio/agenticruntime/3p/dataverse-backed/authenticated/bots/<schema name>/conversations?api-version=2022-03-01-preview`.
   The channel is not added unless you save it; closing the panel changes nothing.

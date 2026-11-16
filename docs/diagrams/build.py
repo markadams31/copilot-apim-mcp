@@ -1618,7 +1618,7 @@ def assurance_pillars():
         1400,
         520,
         "Five assurance pillars before an agent proceeds",
-        "Gateway tests prove the front door; evals prove the agent",
+        "Gateway tests prove the front door; evaluations prove the agent",
         NEW,
     )
     d._text(700, 118, "Assurance to proceed", 16, INK, "600", "middle")
@@ -1642,7 +1642,7 @@ def assurance_pillars():
             "Who called what,\nfor whom; denials\nand silent absence",
         ),
         (940, "AI safety", "Injection, silent\nfailure, write HITL;\nprobes 1–9"),
-        (1200, "Evals", "Tool choice,\nfaithfulness, honesty;\nEvaluate + scorecard"),
+        (1200, "Evaluations", "Tool choice,\nfaithfulness, honesty;\nEvaluate + scorecard"),
     ]
     for x, title, body in pillars:
         d.group(x - 110, 170, 220, 260, title, "plain")

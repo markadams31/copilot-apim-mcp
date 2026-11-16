@@ -45,7 +45,7 @@ workspace. The second region's delegated subnet is peered to the main network.
 | **Power Platform environment** | A Managed Environment in the Australia geography. In the secure profile, two delegated subnets are linked to it by an enterprise policy, so the connector's calls enter the virtual network |
 | **Data policy** | An allow-list for that environment: only custom connectors that point at this gateway, plus the Teams channel and Application Insights. See [governance.md](governance.md) |
 | **Observability** | One Log Analytics workspace behind API Management, the backend API, the network and Microsoft Entra ID, with Copilot Studio telemetry added per agent. See [observability.md](observability.md) |
-| **Assurance (evals)** | Gateway tests show the controls hold; they don't show the agent behaves well. Copilot Studio Evaluate and a probe scorecard cover that. See [testing.md](testing.md#testing-the-agent-evals) |
+| **Assurance (evaluations)** | Gateway tests show the controls hold; they don't show the agent behaves well. Copilot Studio Evaluate and a probe scorecard cover that. See [testing.md](testing.md#testing-the-agent-evaluations) |
 
 ## A tool call, step by step
 

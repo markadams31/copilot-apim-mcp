@@ -2,7 +2,8 @@
 
 Everything needed to stand up a deployment, from accounts to agents, and to remove it again. The
 sequence is in [Stand up the stack](#stand-up-the-stack); what must exist first is in
-[Prerequisites](#prerequisites); removal is in [Teardown](#teardown). Maker steps in the Copilot Studio
+[Prerequisites](#prerequisites); everything it creates is itemised in
+[What gets created](#what-gets-created); removal is in [Teardown](#teardown). Maker steps in the Copilot Studio
 and Power Apps portals are in [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md).
 
 ## Prerequisites
@@ -45,13 +46,14 @@ moved from one to the other ([Harnesses in Copilot Studio](https://learn.microso
 | Tested here | Yes: Copilot Studio results in [testing.md](testing.md) | Yes: a lab agent on this harness, with the Finance Assistant's tools, on the rapid profile in a Sandbox with pay-as-you-go; forecast read and update through MCP |
 
 The Microsoft Copilot harness was formerly called the GitHub Copilot harness, and the portal's Agents list
-may still say either. It is a Copilot Studio framework, not the GitHub Copilot service. **This
+may still say either. The Power Platform admin center's **Harness** column (Manage → Copilot Studio) still
+shows the old value, **GitHub Copilot**, as of 2026-11-17. It is a Copilot Studio framework, not the GitHub Copilot service. **This
 repository prefers it** once a Sandbox with pay-as-you-go is in place.
 
 The gateway, the connector and the tools are the same for both.
-[add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) covers both; its screenshots show the Standard harness.
+[add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) covers both; its screenshots show the standard harness.
 
-**An environment with no credits can't run a Microsoft Copilot harness agent.** The test pane answers "You
+**An environment with no credits can't run a Microsoft Copilot harness agent.** The Preview tab answers "You
 need credits to continue … This environment is out of credits" (`EnforcementUsageCredits`). A trial
 environment has none. Event and scheduled triggers consume credits. They were tested only on the Standard
 harness; unattended runs on the Microsoft Copilot harness have not been tested.
@@ -105,7 +107,7 @@ reason, so confirm in the admin center that Bing search and "move data across re
 | **Managed Environment** turned on | Terraform | Required for Virtual Network support |
 | **Generative AI data movement across regions: off**; **Bing search: off** | Terraform | Keeps processing in-geography with a supported model (see [governance.md](governance.md#data-residency-australia)) |
 | **Enterprise policy (`NetworkInjection`) linked** to the environment (secure profile) | Terraform | Up to 30 minutes of instability after linking. Unlinking needs PowerShell (`Disable-SubnetInjection`) |
-| **Maker credentials: end-user only** | An administrator, in the Power Platform admin center | Environment → Settings → Product → Features → Copilot Studio agents. Not done here ([governance.md](governance.md#known-governance-gaps)) |
+| **Control maker credential options: End-user credentials only** | An administrator, in the Power Platform admin center | Environment → Settings → Product → Features → Copilot Studio agents. Not done here ([governance.md](governance.md#known-governance-gaps)) |
 | **Data policy**: an allow-list for the environment | Terraform ([governance.tf](../infra/modules/contoso-gateway/governance.tf)) | Allows custom connectors on your API Management host plus the Teams channel; blocks the rest. Your tenant may already have a policy that blocks custom connectors |
 
 ### 4. Azure
@@ -166,6 +168,96 @@ work account that builds the agents (section 1).
 - [Managed Environments overview](https://learn.microsoft.com/power-platform/admin/managed-environment-overview)
 - [Power Platform Terraform provider](https://registry.terraform.io/providers/microsoft/power-platform/latest/docs)
 
+## What gets created
+
+Everything a deployment puts into the tenant and the subscription, by layer. Use it to see the whole
+footprint before you start, to review what a deployment leaves in your tenant, and to check teardown
+found everything. The names use the Terraform `prefix` (for example `contosodev`); `<suffix>` is a
+random five-character string.
+
+**Created by** says how an object comes to exist: **Terraform**, **by hand** (a person in a portal,
+following [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md)), or **automatic** (a platform creates it
+as a side effect, and Terraform doesn't know about it). Teardown removes the Terraform objects and
+**finds** the others ([Teardown](#teardown)).
+
+### Azure
+
+All in one resource group, `rg-<prefix>-agent-gateway`.
+
+| Object | Purpose | Created by | Profile |
+|---|---|---|---|
+| **API Management** `apim-<prefix>-<suffix>` | The gateway: validates the token, enforces each agent's allow-list, serves the MCP servers | Terraform | Both. Basic v2, public (rapid); Developer, internal (secure) |
+| Two **APIs** (`internal-systems`, `budgeting`), their **policies**, two **MCP servers** (`directory-mcp`, `finance-mcp`) and five **tool definitions** | The REST operations and the MCP tools over them | Terraform | Both |
+| API Management **logger** and **diagnostic** | Send gateway traces to Application Insights | Terraform | Both |
+| Two **Function apps** (`func-<prefix>-<suffix>`, `func-<prefix>-budg-<suffix>`) on two **Flex Consumption plans** (FC1) | The finance and budgeting backends | Terraform; code deployed by `scripts/deploy-function.sh` | Both |
+| **Storage account** `st<prefix><suffix>`, containers `deploy` and `deploy-budgeting` | Hold the Function packages | Terraform | Both |
+| Two **user-assigned managed identities** (`id-<prefix>-func-…`, `id-<prefix>-budgeting-…`) | The backends' credential for the on-behalf-of exchange and for SQL | Terraform | Both |
+| **SQL server** `sql-<prefix>-<suffix>`, databases `finance` and `budgeting` (Basic), firewall rules | The demo data. Seeded by `scripts/sql-setup.py` | Terraform; data by script | Both. Client firewall rules apply to rapid |
+| **Log Analytics workspace** and **Application Insights** | Gateway, Function and Entra logs | Terraform | Both |
+| API Management **diagnostic setting** | Gateway logs to Log Analytics | Terraform | Both |
+| **Action group** `<prefix>-alerts` | Emails alerts (only when `alert_email` is set) | Terraform | Both |
+| Two **alert rules** (`authz-denial-spike`, `backend-errors`) | Alert on 401/403 spikes and backend 5xx | Terraform | Both |
+| **Virtual networks** (primary and secondary region), subnets, **peerings**, **NSGs** | Private network, plus the two delegated subnets Power Platform needs | Terraform | Secure |
+| **NAT gateway** and public IP | Outbound access for API Management and the backend | Terraform | Secure |
+| **Private DNS zones** (Private Link and API Management), links, A record, **private endpoint** | Name resolution and private access to the backend and gateway | Terraform | Secure |
+| **VPN gateway**, public IP, certificates (generated locally) | Lets a laptop reach the private gateway for testing | Terraform | Secure |
+| **DNS forwarder VM**, network interface | Resolves the private names for VPN clients | Terraform | Secure |
+| **Flow-log storage account** and **virtual network flow log** | Network audit trail | Terraform | Secure |
+| **Enterprise policy** (`Microsoft.PowerPlatform/enterprisePolicies`) | Carries the delegated subnets to Power Platform | Terraform | Secure |
+| **Power Platform account** (hidden resource) | Represents the billing plan in the resource group | **Automatic**, when the billing plan is made | Both, if pay-as-you-go |
+| Smart-detector alert rule ("Failure Anomalies") and action group ("Application Insights Smart Detection") | Application Insights defaults | **Automatic** | Both. They block deleting the resource group |
+| `NWTA-…` data collection rule and endpoint | Traffic Analytics | **Automatic** | Secure |
+| `NetworkWatcherRG` | Azure's network diagnostics group | **Automatic**; free and recreated | Secure |
+| **Soft-deleted API Management** | Azure's retention after delete | **Automatic**; free, purges itself | Both |
+
+### Microsoft Entra ID
+
+| Object | Purpose | Created by |
+|---|---|---|
+| **API app registration** `<prefix>-gateway-api`, its service principal, identifier URI, scope `Tools.Read`, app role `CostCentres.Read` | The resource the agents' tokens are issued for | Terraform |
+| **Admin-consented delegated grants** on the API app (Graph `User.Read`, Azure SQL `user_impersonation`) | Lets the backends act on the user's behalf | Terraform |
+| Two **federated identity credentials** (`function-managed-identity`, `budgeting-function-managed-identity`) | The Functions' managed identities as the API app's credential, so there's no secret | Terraform |
+| `obo-fallback` **client secret** | Only when `obo_credential` isn't `managed_identity` | Terraform |
+| One **app registration and service principal per agent** (`<prefix>-employee-assistant`, `<prefix>-finance-assistant`), pre-authorised for `Tools.Read` | The caller identity the gateway checks against each agent's allow-list | Terraform |
+| One **federated identity credential per MCP connector** (`copilot-<connector>`) | Trusts the connector's managed identity, so the connector holds no secret | Terraform, from the redirect URL and subject you copy out of the portals |
+| **Groups**: `<organisation> Finance Readers (<prefix>)`, `<organisation> Budget Editors (<prefix>)`, `<prefix>-agents-environment-users` | Who may read spending, edit forecasts and use the environment | Terraform |
+| **App role assignment** of `CostCentres.Read` | Which users may call the cost-centre tool | Terraform |
+| **Tenant diagnostic setting** `<prefix>-to-log-analytics` | Sends sign-in and Graph activity logs to Log Analytics (the `entra_diagnostics` switch) | Terraform |
+| **Agent identity** for each Copilot Studio agent (Copilot Studio labels it "Entra Agent ID"), a child of Copilot Studio's agent identity blueprint | Microsoft's directory record of the agent | **Automatic**: when the agent is created (standard harness) or first published (Microsoft Copilot harness). **Survives deleting the environment** |
+| The tenant's **Microsoft Graph** and **Azure SQL** service principals | Terraform adopts them to grant consent. They belong to the whole tenant | Not created, **never destroy** (teardown step 3) |
+
+### Power Platform
+
+| Object | Purpose | Created by |
+|---|---|---|
+| **Environment** `<prefix>-agents` (Sandbox, Dataverse on) | Where the agents, connectors and connections live | Terraform, or by hand when the billing plan can't be read ([Licences](#2-licences)) |
+| **Managed Environment** settings | Required for virtual network support; turns off cross-region data movement and Bing search | Terraform |
+| **Data policy** `<prefix> agents: allow-list` | Allows custom connectors on the gateway host and the Teams channel; blocks the rest | Terraform |
+| **Enterprise policy link** | Injects the environment into the delegated subnets | Terraform (secure) |
+| **Billing plan** (pay-as-you-go) | Gives the environment Copilot Credits | **By hand**, in the admin center. Terraform never sees it |
+| Copilot Credits allocation | Lets the Microsoft Copilot harness run | **By hand** |
+
+### Copilot Studio, Power Apps and Teams
+
+None of this is in Terraform. It lives inside the environment and goes when the environment is deleted,
+except the agent identities above and the Teams installs.
+
+| Object | Purpose | Created by |
+|---|---|---|
+| **Agents** (Employee Assistant, Finance Assistant) | What users talk to | By hand |
+| **MCP tool registration** on each agent | Points the agent at a gateway MCP server | By hand |
+| **Custom connector** for each MCP server | Created when you add the MCP server; its managed identity is what Entra trusts | By hand (steps 4 and 5) |
+| **Connection** for each connector | The signed-in user's OAuth connection | By hand (step 7); each user makes their own |
+| **Teams app** and channel publishing | Lets users chat in Teams | By hand. The installs stay in users' Teams after the environment is gone, pointing at nothing |
+| Optional: workflows, triggers, Evaluate test sets | Tests and automation | By hand. A trigger on a published agent bills per run |
+
+### Roles and local files
+
+| Item | Why |
+|---|---|
+| Azure **Owner** (or Contributor plus User Access Administrator) on the subscription, an Entra admin role that can grant consent, **Power Platform Administrator** | Needed by whoever deploys. Granted by hand; revoke last ([Teardown](#teardown) step 10) |
+| `terraform.tfvars`, Terraform state and backups, `.msal_cache.json`, the `vpn/` directory (secure) | Local to the deployer; not removed by a destroy |
+
 ## Stand up the stack
 
 The order of operations for a new deployment. Profile differences: **secure** needs the VPN, and about
@@ -191,7 +283,7 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
    Prefer Home → **Agent** (Microsoft Copilot harness); save until the URL has a bot ID. Add the MCP
    server with OAuth Manual and a **placeholder** client secret. Copy the redirect URL, then **Cancel**:
    don't create the connection yet.
-5. **Managed identity on the connector.** Power Apps → Custom connectors → Security → Azure AD →
+5. **Managed identity on the connector.** Power Apps → Custom connectors → Security → Microsoft Entra ID →
    **Use managed identity**. Copy the subject after Update connector (exact string).
 6. **Trust in Entra.** Put the redirect URL and subject in `copilot_connectors` (`terraform.tfvars`),
    plan and apply. Expect a federated identity credential to be created (and any replaced one
@@ -205,7 +297,7 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
 
 - Secure: if the enterprise policy was just linked, wait ~30 minutes before relying on tool calls.
 - Baseline quality: seed an Evaluate test set and run the cheap containment probes (4, 6 and 8;
-  [testing.md](testing.md#testing-the-agent-evals)). The smoke test proves the gateway, not the agent.
+  [testing.md](testing.md#testing-the-agent-evaluations)). The smoke test proves the gateway, not the agent.
 - Day-2 changes (new tools, users, agents): [operate.md](operate.md#tools-servers-and-agents).
 - Give users the agent: [Make the agent available to users](#make-the-agent-available-to-users).
 - Tear down: [Teardown](#teardown).
@@ -244,6 +336,10 @@ need an Entra role such as AI Administrator or Global Administrator, and **an ad
 
 Removing a deployment has an order. A plain `terraform destroy` fails partway on either profile and,
 worse, can delete two service principals that belong to the whole tenant. Follow these steps.
+
+[What gets created](#what-gets-created) lists every object. A destroy doesn't remove the billing plan,
+the agent identities, the Teams installs, the auto-created Azure resources or the local files; steps 5, 8 and 9
+cover them.
 
 Run every command in the profile's directory (`terraform -chdir=infra/profiles/<profile> ...`). All
 resource addresses are under `module.gateway`. Plan each destroy to a file, read it, then apply the
@@ -327,7 +423,7 @@ file.
    | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
    | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
    | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
-   | No Entra Agent IDs are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its Agent ID, but destroying the environment around it did not: eight were left after earlier teardowns |
+   | No agent identities are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its agent identity, but destroying the environment around it did not: eight were left after earlier teardowns |
 
 10. **Revoke any roles granted for the build last** (subscription Contributor, Power Platform
     Administrator). Steps 4 and 5 need them.

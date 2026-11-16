@@ -230,7 +230,7 @@ assertion) signing in; it does not name the user, because no user is involved.
 
 Turn on per agent: **Settings → Advanced → Application Insights**, paste the workspace-based
 Application Insights **connection string**, and **Save**. Leave *Log sensitive properties* off (it
-records message text). **Publish** afterwards: events from chats in the test pane arrive too
+records message text). **Publish** afterwards: events from chats in the Preview tab or the Test your agent pane arrive too
 (`DesignMode = True`), but publishing is what the setting is documented to need, and the agent needs
 a channel to publish (this demonstration adds Teams only, not made available in the Microsoft 365
 Copilot agent store). The connection string is a write-only ingestion key, entered by the maker in the portal. Get it with:
@@ -274,7 +274,7 @@ action group that emails that address; without it **nobody is notified**.
 
 ## Learn more
 
-- [Evals](testing.md#testing-the-agent-evals): quality scores must join to these traces, or silent failure looks like a win
+- [Evaluations](testing.md#testing-the-agent-evaluations): quality scores must join to these traces, or silent failure looks like a win
 - [Monitor MCP server traffic in API Management](https://learn.microsoft.com/azure/api-management/monitor-mcp-servers)
 - [Copilot Studio telemetry with Application Insights](https://learn.microsoft.com/microsoft-copilot-studio/telemetry-overview)
 - [Environment-level telemetry (preview)](https://learn.microsoft.com/microsoft-copilot-studio/advanced-environment-level-agent-telemetry)

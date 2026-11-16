@@ -87,15 +87,16 @@ large class of agent is not. An event or a schedule starts it, and nobody is cha
 **an email arrives in a shared mailbox, and an agent assesses its urgency and decides which team should
 handle it.**
 
-This section sets out what changes for such an agent, measured against this design. One part has been
-tested: a published **Standard harness** agent with a scheduled trigger called a tool through the
-private gateway, running as the maker ([testing.md](testing.md#governance)). Nothing has been tested
-with the Microsoft Copilot harness, which is the harness this repository otherwise prefers. Microsoft documents
-triggers on the agent itself (preview), but this environment's agent editor has no Triggers section.
-The alternative, a workflow with a schedule trigger and an Agent node, was blocked by the data policy:
-the allow-list doesn't include the Microsoft "Agents" connector, so the node's connection couldn't be
-created. So whether such an agent runs unattended here, and as which identity, is unknown. The rest is analysis from Microsoft's documentation and a
-test plan that has not been run.
+This section sets out what changes for such an agent, measured against this design. Two parts have been
+tested, each once, and both ran as the maker. A published **standard harness** agent with a scheduled
+trigger called a tool through the private gateway ([testing.md](testing.md#governance)). On the Microsoft
+Copilot harness, which this repository otherwise prefers, a workflow with a Recurrence trigger and an
+Agent node ran the published Finance Assistant unattended and called two tools through the gateway
+([testing.md](testing.md#evidence-gaps)). Microsoft documents triggers on the agent itself (preview), but
+this environment's agent editor has no Triggers section, so the workflow was the route. It needed the
+Microsoft "Agents" connector allowed in the data policy, and publishing took about 2h40 to clear. Not
+tested: an unattended run as a different user, a second run, and what happens when the maker's connection
+expires. The rest is analysis from Microsoft's documentation and a test plan that has not been run.
 
 ### The shape
 

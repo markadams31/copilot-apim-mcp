@@ -123,7 +123,7 @@ general knowledge, with no error ([ai-safety.md](ai-safety.md#silent-failure)).
 |---|---|---|
 | **Build** | A maker builds in the environment. The data policy limits what can be added. The maker needs no Microsoft Entra administrator role | ✅ |
 | **Connect** | The maker creates the MCP connector; the platform team trusts it by adding its federated identity credential in Terraform ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md)). An untrusted connector can't sign anyone in | ✅ |
-| **Publish** | Needs at least one channel; only Microsoft Teams and Microsoft 365 is allowed by the data policy. On a trial tenant it also needs a Sandbox or Production environment with a billing plan | ✅ Published, with a scheduled trigger (Standard harness) |
+| **Publish** | Needs at least one channel; only Microsoft Teams and Microsoft 365 is allowed by the data policy. On a trial tenant it also needs a Sandbox or Production environment with a billing plan | ✅ Published, with a scheduled trigger (standard harness) |
 | **Run** | Every tool call passes the gateway: allow-list, role, parameters, rate limit, audit trace | ✅ |
 | **Change** | A Terraform plan for the server and agent maps; the smoke test afterwards | ✅ Mechanism. ⏳ No approval workflow |
 | **Promote** (development to test to production) | A connector exported to another environment gets a **new managed identity**, so each environment needs its own federated identity credential | ⏳ One environment only |

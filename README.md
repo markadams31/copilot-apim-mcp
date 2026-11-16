@@ -14,7 +14,7 @@ The proof of concept was built and tested to answer five questions:
 | Who decides what an agent may do, and how is it stopped? | [Governance](docs/governance.md) |
 | Can we see what every agent did, for whom? | [Observability](docs/observability.md) |
 | What happens when the model is wrong, manipulated or silently failing? | [AI safety](docs/ai-safety.md) |
-| How do we know the agent is performing, and that a change did not make it worse? | [Evals](docs/testing.md#testing-the-agent-evals) |
+| How do we know the agent is performing, and that a change did not make it worse? | [Evaluations](docs/testing.md#testing-the-agent-evaluations) |
 
 The evidence for every claim, and the claims not yet tested, are in [docs/testing.md](docs/testing.md).
 
@@ -96,7 +96,7 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 
 ## How a tool call works
 
-1. A user chats with an agent, in the Copilot Studio test pane or, once it is published, in Teams.
+1. A user chats with an agent, in Copilot Studio (the Preview tab, or the Test your agent pane on the standard harness) or, once it is published, in Teams.
 2. The agent's MCP connection signs the user in through Microsoft Entra ID and gets an access token
    **for the gateway's API, issued to that agent's client app**, with the `Tools.Read` scope.
 3. The agent calls the MCP server for the tool's domain in API Management. There is one server for each
@@ -125,9 +125,9 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 |---|---|
 | Scripted tests against a public gateway (the rapid profile) | Pass: per-agent tool lists and allow-lists, cross-agent refusal, both access models, no client secret anywhere, parameter validation, forged tokens, load and rate limit, the database refusing a user |
 | Scripted tests over the private network (the secure profile) | Pass, including the two bypass attempts: the REST API called directly, and the backend API called directly |
-| Real Copilot Studio agents (Standard harness, an earlier build) over Power Platform Virtual Network support | Pass: both access models, connector authenticated by a managed identity, data policy enforcement, a published Standard harness agent with a scheduled trigger, fault injection, an alert email arriving |
+| Real Copilot Studio agents (standard harness, an earlier build) over Power Platform Virtual Network support | Pass: both access models, connector authenticated by a managed identity, data policy enforcement, a published Standard harness agent with a scheduled trigger, fault injection, an alert email arriving |
 | Copilot Studio on the rapid (public) gateway, Microsoft Copilot harness | Pass: the Finance Assistant with two managed-identity connectors (directory and finance) used all five tools in Preview, including a forecast update with no approval step. Probes: identity spoofing, invalid parameters, prompt disclosure, injected instructions in a tool result and a stopped backend were all handled; "everything since 2020" was split into seven calls instead of refused. Evidence screenshots are kept in [docs/images/testing](docs/images/testing/) |
-| Not tested | A second user; an unattended (scheduled or event-triggered) Microsoft Copilot harness agent (no Triggers section in the editor; the workflow route is blocked by the data policy until the Agents connector is allowed); Copilot Studio Evaluate, which would not load; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
+| Not tested | A second user; an unattended Microsoft Copilot harness agent as anyone but the maker, or after its connection expires (one workflow-triggered run as the maker passed; the editor has no Triggers section, so a workflow starts it); Copilot Studio Evaluate, which would not load; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
 
 **Who it's for:** platform, security, network and Power Platform teams, and architects, deciding
 whether and how to give Copilot Studio agents governed access to internal systems.
