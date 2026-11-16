@@ -12,7 +12,7 @@ the design, in plain language first and technical detail second.
 | **Enterprise architecture** | [MCP](#mcp-and-tools), [API Management as an MCP server](#api-management-as-an-mcp-server) | [architecture.md](architecture.md) |
 | **Governance / risk** | [Power Platform environment](#power-platform-environment), [Managed Environment](#managed-environment), [Connectors and connections](#custom-connectors-and-connections) | [governance.md](governance.md) |
 | **Networking** | [Enterprise policy and subnet delegation](#enterprise-policy-and-subnet-delegation) | [networking.md](networking.md) |
-| **AI / agent team** | [MCP](#mcp-and-tools), [Connectors and connections](#custom-connectors-and-connections), [Agent identities](#agent-identities-two-different-things) | [ai-safety.md](ai-safety.md), [testing.md](testing.md#testing-the-agent-evals), [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) |
+| **AI / agent team** | [MCP](#mcp-and-tools), [Connectors and connections](#custom-connectors-and-connections), [Agent ID and client app](#agent-id-and-client-app-registration-two-different-things) | [ai-safety.md](ai-safety.md), [testing.md](testing.md#testing-the-agent-evals), [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) |
 | **Power Platform admins** | [Power Platform environment](#power-platform-environment) through [Data policies](#data-policies) | [deploy.md](deploy.md#prerequisites) |
 | **API owners** | [API Management as an MCP server](#api-management-as-an-mcp-server), [On-behalf-of](#on-behalf-of-obo) | [operate.md](operate.md#tools-servers-and-agents), [architecture.md](architecture.md#access-models-delegated-and-app-only) |
 
@@ -189,27 +189,68 @@ agents; the **standard harness** runs rule-based agents with topics. The officia
 [harness overview](https://learn.microsoft.com/microsoft-copilot-studio/harnesses-overview) compares
 them, and [deploy.md](deploy.md#which-harness-and-copilot-credits) covers billing here.
 
-An agent on the Microsoft Copilot harness is built from a few parts, which Microsoft documents in detail:
+An agent on the Microsoft Copilot harness is built from the parts below, all configured on the **Build**
+tab ([About agents powered by the Microsoft Copilot harness](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/overview)).
+Each row describes the setting and explains its purpose: why it matters and what sets it apart from the others.
 
-| Part | What it is | What governs it here |
+| Agent setting | Description | Purpose |
 |---|---|---|
-| **Instructions and model** | What the agent is for, and the model that reasons | The model is a [what still depends on the model](ai-safety.md#what-still-depends-on-the-model) risk |
-| **Tools** | Actions the agent can call, including MCP servers | The gateway: the allow-list and the user's permissions |
-| **Knowledge** | Sources the agent reads, such as websites and files | The environment's [data policy](#data-policies) |
-| **Skills** | Reusable capabilities the agent can use ([Skills overview](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/skills-overview)) | Not examined here |
-| **Channels** | Where users reach the agent, such as Teams | The data policy, and the agent's sharing limits |
+| **[Instructions](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/authoring-instructions)** | Natural-language text giving the agent its purpose, tone, scope and what to decline | The main way to shape behaviour, since this harness has no topic flows. It is guidance, not enforcement: Microsoft says instructions aren't an access control, so anything that must hold belongs in a part that is enforced |
+| **[Model](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/authoring-agent-model-availability)** | The language model that does the reasoning. **Auto** routes each request to a suitable one | Sets answer quality, speed and credit cost, and is the part least in the maker's control: models are upgraded and retired on a published schedule, and some process data outside your region. Changing it changes how well the instructions are followed, so retest |
+| **[Tools](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/tools-overview)** | Actions the agent can call: connectors, flows and MCP servers, chosen from their names and descriptions | How an agent **does** something, so where the real risk and value are. Knowledge is read; a tool acts or fetches live data, with the user's or the maker's permissions depending on how it authenticates. Skills only guide; tools reach out |
+| **[Knowledge](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/knowledge-copilot-studio)** | Sources the agent searches to ground its answers, such as websites, files and Dataverse tables | Keeps answers tied to approved, current content, and can limit the agent to those sources. It is content to read, supplied by the maker; tools act, and memory is learned per user |
+| **[Skills](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/skills-overview)** | Portable packages of instructions for one kind of task, loaded when a request matches. Built-in skills cover CSV, Word, PDF, PowerPoint and Excel files | Package how to do one kind of task well (an expense check, a data analysis) once and reuse it across agents, instead of growing one long set of instructions. Instructions apply to every request; a skill is loaded only when a request matches it. It only guides: it can tell the agent how to use a tool, but it can't connect to a system itself |
+| **[Connected agents](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/authoring-add-other-agents)** | Other agents on this harness that the main agent hands requests to, each with its own context and settings | Let a front-door agent route to specialists that other teams own and publish, possibly on a different model. Unlike a skill, it is a separate agent. Delegation goes one level only, and sharing the parent doesn't change whose credentials the connected agent's tools use |
+| **[Memory](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/memory-overview)** (preview) | A private store, per user, of preferences and context the agent learns | Gives continuity across sessions. Unlike instructions and knowledge, which the maker sets for everyone, memory is learned and differs per user. The maker can't read it, it is deleted after 28 days without use, and turning it off stops its use but doesn't delete it |
+| **[Channels](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/publication-channels-overview)** | Where users reach a published agent: Teams, Microsoft Copilot, a demo website or an embedded web app | Decide **who** can reach the agent and through which client; the other parts decide what it can do. Administrators can block channels |
 
-## Agent identities: two different things
+## Agent ID and client app registration: two different things
 
-The two are easy to confuse:
+Each agent appears in Microsoft Entra ID as two separate objects that sound alike and do different jobs.
+Neither replaces the other. The short version: the **Entra Agent ID** is how *Microsoft* knows the agent,
+and the **client app registration** is how *our gateway* knows the agent.
 
-| | **Entra Agent ID** | **Agent client app** (this solution) |
-|---|---|---|
-| What | An identity Copilot Studio creates automatically for every agent | An app registration Contoso creates, one per agent |
-| Used for | The agent talking to channels and Microsoft services; governance, Conditional Access (Teams channel today), audit | Signing users in for the MCP connection, so the token's `azp` identifies the agent |
-| Who controls it | Microsoft manages its credentials; admins govern it in Entra | Contoso, in Terraform |
+Microsoft's documentation uses "agent identity" for the Entra Agent ID. This solution never uses that
+phrase for the client app registration, to avoid mixing them up.
 
-**Learn more:** [Agent identities in Copilot Studio](https://learn.microsoft.com/microsoft-copilot-studio/govern-agents-identities-overview)
+### The Entra Agent ID: Microsoft's record of the agent
+
+Copilot Studio creates it automatically, with no setup: when the agent is created (standard harness) or
+first published (Microsoft Copilot harness). It is a service principal with an "agent" subtype, and the
+agent's owner is recorded as its **sponsor**. Microsoft manages its credentials. You can't bring your own,
+and nobody in the tenant, administrators included, can get a token as it.
+
+It gives administrators the usual things they want to know about an agent. It appears in Entra's list of
+agent identities, with a sponsor, its own sign-in and audit entries, and a lifecycle that ends when the
+agent is deleted. The agent uses it to authenticate to channels and Microsoft services, such as Teams.
+
+### The client app registration: the identity the connector signs in as
+
+Terraform creates one ordinary app registration for each agent. The agent's connector uses it as its
+**OAuth client**. When a user first needs a tool, the connector signs that user in at Entra ID *as this
+app*. It proves itself with its managed identity, through a federated credential on the app, so no secret
+exists. The token that comes back names the app in its `azp` claim. That claim is how the gateway knows
+which agent is calling, and so which tools it may use.
+
+Microsoft's own guides for connecting Copilot Studio to an MCP server work the same way, and call this
+the *client app registration*.
+
+### What this means for governance
+
+Each object answers a different question, so each is checked in a different place:
+
+- **Who owns this agent, and is it still active?** The Entra Agent ID: sponsor, audit entries, lifecycle.
+- **Which agent may call the gateway, and which tools may it use?** The client app registration and the
+  gateway's allow-list.
+- **Which connectors may agents use at all?** The environment's [data policy](#data-policies).
+
+There is one gap to know about. Custom connectors and MCP servers add no API permissions to the Agent
+ID, so the MCP tools don't show on it in Entra, and Conditional Access on an Agent ID is enforced only in
+Teams today. For these tools, the gateway and the data policy do the governing.
+
+**Learn more:** [Agent identities and authentication for Copilot Studio](https://learn.microsoft.com/microsoft-copilot-studio/govern-agents-identities-overview) ·
+[Authentication protocols in agents](https://learn.microsoft.com/entra/agent-id/agent-oauth-protocols) ·
+[Microsoft Entra Agent IDs for Copilot Studio agents](https://learn.microsoft.com/microsoft-copilot-studio/admin-use-entra-agent-identities)
 
 ## Power Platform environment
 

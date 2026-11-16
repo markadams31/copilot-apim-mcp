@@ -25,7 +25,7 @@ order of operations from Terraform to the first test. For vocabulary, see [conce
 
 ## How the pieces fit
 
-![The components that connect a Copilot Studio agent to an MCP server, as three OAuth roles. In a Power Platform environment, the agent uses a custom connector, which has a managed identity, and a per-user connection that holds the user's sign-in. Arrow 1: the connector signs in at the Microsoft Entra ID token endpoint as the agent's app registration, proving itself with its managed identity instead of a client secret. The token endpoint trusts that identity through the federated credential on the agent's app registration, which also holds the client ID set in the connector, a redirect URI for the connector and the `Tools.Read` API permission. Arrow 2: the token endpoint issues a token for the gateway API, whose own app registration is the audience of every token, and the connection keeps it. Arrow 3: each tool call carries the user's token to the MCP server in Azure API Management. Arrow 4: the server checks the token's signature, audience, scope and calling agent.](diagrams/connect-agent.svg)
+![The components that connect a Copilot Studio agent to an MCP server, as three OAuth roles. In a Power Platform environment, the agent uses a custom connector, which has a managed identity, and a per-user connection that holds the user's sign-in. Arrow 1: the connector signs in at the Microsoft Entra ID token endpoint as the client app registration, proving itself with its managed identity instead of a client secret. The token endpoint trusts that identity through the federated credential on the client app registration, which also holds the client ID set in the connector, a redirect URI for the connector and the `Tools.Read` API permission. Arrow 2: the token endpoint issues a token for the gateway API, whose own app registration is the audience of every token, and the connection keeps it. Arrow 3: each tool call carries the user's token to the MCP server in Azure API Management. Arrow 4: the server checks the token's signature, audience, scope and calling agent.](diagrams/connect-agent.svg)
 
 ## The components
 
@@ -35,12 +35,12 @@ admin work, and the maker is the environment's owner.
 | Component | What it does |
 |---|---|
 | **Power Platform environment** | Where the agent, its connector and the users' connections live. A **Sandbox** in Australia with Dataverse, a Managed Environment with agent sharing limits, and data-residency settings. Never Developer: it can't take pay-as-you-go, which the Microsoft Copilot harness needs. Terraform builds it ([powerplatform.tf](../infra/modules/contoso-gateway/powerplatform.tf)); with a billing plan, create it in the admin center and import it ([AGENTS.md](../AGENTS.md)). On the secure profile Terraform also builds the delegated subnets, peering, DNS and the `NetworkInjection` enterprise policy, and links the policy to the environment ([network/powerplatform.tf](../infra/modules/contoso-gateway/network/powerplatform.tf)) |
-| **Agent** | The Copilot Studio agent the user chats with. It decides which tool to call; it never talks to Entra ID and never holds a token. Its identity to the gateway is the client ID of its own app registration, which is set in its connector |
+| **Agent** | The Copilot Studio agent the user chats with. It decides which tool to call; it never talks to Entra ID and never holds a token. The gateway tells it apart by the client ID of its own client app registration, which is set in its connector |
 | **Custom connector** | Copilot Studio creates one for each MCP server you add as a tool, so add one MCP server for each business domain the agent needs. It holds the server's URL and the OAuth settings (client ID, URLs, scope), and it makes the sign-in and token requests on the agent's behalf |
 | **Managed identity** | The connector's credential. It replaces a client secret, so no secret exists to store, leak or rotate. Its **issuer** and **subject** identify it to Entra ID |
 | **Connection** | The user's sign-in for one connector. It holds the user's token and refreshes it, and it is why each user sees their own data. Each user has one connection for each connector |
-| **Agent app registration** (Entra ID) | The identity the connector signs in as. It holds the client ID set in the connector, a **redirect URI** for the connector, a **federated identity credential** that tells Entra ID to trust the connector's managed identity by its issuer and subject, and an **API permission**: the delegated `Tools.Read` permission on the gateway API, which is what lets it ask for that token. API Management reads the client ID from the token (`azp`) to know which agent is calling |
-| **Token endpoint** (Entra ID) | Checks the connector's credential against the federated credential on the agent app registration, then issues the user's token for the gateway API |
+| **Client app registration** (Entra ID) | The OAuth client the connector signs in as, one per agent. It holds the client ID set in the connector, a **redirect URI** for the connector, a **federated identity credential** that tells Entra ID to trust the connector's managed identity by its issuer and subject, and an **API permission**: the delegated `Tools.Read` permission on the gateway API, which is what lets it ask for that token. API Management reads the client ID from the token (`azp`) to know which agent is calling |
+| **Token endpoint** (Entra ID) | Checks the connector's credential against the federated credential on the client app registration, then issues the user's token for the gateway API |
 | **Gateway API app registration** (Entra ID) | Represents the gateway. It defines the `Tools.Read` scope and its identifier, `api://<api_client_id>`, which is the **audience** of every token. It pre-authorises each agent app for `Tools.Read`, so users aren't asked to consent |
 | **MCP server** (API Management) | The domain MCP server the connector calls, with the token check in front of it. The check runs on every call: the signature, the audience (the gateway API), the scope (`Tools.Read`), and that the calling agent is one that uses this server. Only then does API Management forward the call to the REST API behind it |
 
@@ -165,7 +165,7 @@ The issuer isn't needed: it's always `https://login.microsoftonline.com/<tenant>
 Terraform builds. One entry per connector, so an agent with two servers has two entries.
 
 Then plan to a file, read it, and apply that file (`terraform -chdir=infra/profiles/<profile> plan -out=...`,
-then `apply`). Expect the agent's app registration to change plus, when the connector key changed, a
+then `apply`). Expect the client app registration to change plus, when the connector key changed, a
 federated identity credential destroyed and created and a swap of the connector ID in the data policy;
 cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply adds:
 
@@ -178,7 +178,7 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
 1. In Power Apps → **Connections** (same environment). Use the **list** search box (not the global
    Power Apps search in the header). Find your server name → **New connection** / **+** → leave
    **OAuth Connection** selected → **Create**. A Microsoft popup asks you to pick the **work**
-   account (and, the first time for an agent's app, to consent). Clicking the already-signed-in
+   account (and, the first time for an agent's client app, to consent). Clicking the already-signed-in
    work account is usually enough; if a password or MFA page appears, the user must complete it. The
    connection must show **Connected** (not Reconnect). An older failed attempt may sit beside it as
    Reconnect; leave it and use the Connected one.

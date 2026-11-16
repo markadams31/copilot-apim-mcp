@@ -1842,8 +1842,8 @@ def connect_agent():
         150,
         525,
         "app-registration",
-        "Agent app registration",
-        "the agent's identity: its client ID is\nset in the agent's connector\nredirect URI for the connector\na federated credential for the\nconnector's managed identity\nAPI permission: Tools.Read",
+        "Client app registration",
+        "one per agent; the gateway reads its\nclient ID to see which agent calls\nclient ID is set in the connector\nredirect URI for the connector\na federated credential for the\nconnector's managed identity\nAPI permission: Tools.Read",
         size=40,
     )
     d.node(
@@ -1869,7 +1869,7 @@ def connect_agent():
         color=PURPLE,
         num=1,
         num_at=(300, 365),
-        label="Sign in as the agent's app. The connector\nproves itself with its managed identity,\nnot a client secret.",
+        label="Sign in as the client app. The connector\nproves itself with its managed identity,\nnot a client secret.",
         at=(288, 350),
         anchor="end",
     )

@@ -11,7 +11,7 @@ Needs a person: it starts a device-code sign-in as the agent's app, and YOU comp
 
 Prediction, written before the run: Entra ID accepts the device-code request, you sign in, and the
 token request is then refused because the app is not a public client (invalid_client, AADSTS7000218).
-If a token is issued, the agent's identity is NOT a boundary and the check fails.
+If a token is issued, the agent's client app is NOT a boundary and the check fails.
 """
 
 import sys

@@ -95,7 +95,7 @@ variable "allow_test_sign_in" {
   description = <<-EOT
     Let the agent apps accept public-client sign-in so scripts/smoke.py and scripts/pressure.py can play
     Copilot Studio's part. Leave false: when true, anyone in the tenant can get a token as any agent (the
-    agent identity stops being a boundary). Turn on for a test run, then off.
+    an agent's client app stops being a boundary). Turn on for a test run, then off.
   EOT
   type        = bool
   default     = false

@@ -142,11 +142,11 @@ Studio Code, or Copilot Studio ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent
 | A disallowed operation called on the REST API directly | Scripts | ✅ 403; the allowed control operation still 200 |
 | Authorisation grid: every agent, tool and path | Scripts | ✅ 12 of 12. Allowed calls return data; disallowed ones return "Not Found" through MCP and 403 through REST |
 | Tampered signature, `"alg": "none"`, a token for another API, no token | Scripts | ✅ 401 for each |
-| Public-client sign-in as an agent, with the test window closed | Device-code sign-in | ✅ Refused: `invalid_client`, `AADSTS7000218` |
+| Public-client sign-in with an agent's client app, with the test window closed | Device-code sign-in | ✅ Refused: `invalid_client`, `AADSTS7000218` |
 | The connector's federated identity credential removed, then a new connection | Copilot Studio | ✅ Sign-in fails: `AADSTS70025`. The managed identity is what authenticates; the placeholder secret does nothing |
 | No client secret on the Functions app or the app registration | Scripts | ✅ |
 | The on-behalf-of exchange with a client secret instead (the fallback) | Scripts, private | ✅ Identical results. One transient `AADSTS7000215` on the first call after switching, not reproduced |
-| An agent using another agent's connector | Copilot Studio | ⚠️ **Gets that agent's tools.** The connector is the identity ([governance.md](governance.md#known-governance-gaps)) |
+| An agent using another agent's connector | Copilot Studio | ⚠️ **Gets that agent's tools.** The connector carries the client app ([governance.md](governance.md#known-governance-gaps)) |
 
 ### Domain MCP servers (rapid profile)
 

@@ -229,8 +229,13 @@ from that review and were not re-opened; check one before relying on it.
 - **The on-behalf-of hop takes delegated scopes, never app roles**, and isn't for app-only callers.
   Azure SQL's only delegated scope is the coarse `user_impersonation`, so least privilege has to be
   enforced in the database (contained users and roles, as `sql-setup.py` does).
-- A Copilot Studio **Agent ID** is a Microsoft-managed identity for governance and Conditional Access.
-  Tenants can't mint tokens as it, so it doesn't replace the connector's client app.
+- A Copilot Studio **Agent ID** is a Microsoft-managed identity for governance, created when the agent is
+  created (standard harness) or first published (Microsoft Copilot harness). Tenants can't mint tokens as
+  it, and an agent identity can't start an interactive sign-in, so it doesn't replace the connector's
+  client app. Custom connectors and MCP servers add no API permissions to it, and Conditional Access on it
+  is enforced only in Teams today. See [concepts.md](docs/concepts.md#agent-id-and-client-app-registration-two-different-things).
+- **Agent IDs outlive a destroyed environment.** Eight were left behind by earlier teardowns. Check for
+  them after a destroy (deploy.md teardown step 9) and delete any whose agent is gone.
 
 **Billing and environments**
 

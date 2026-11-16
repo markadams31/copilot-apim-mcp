@@ -147,7 +147,7 @@ resource "azuread_application" "agent" {
   sign_in_audience = "AzureADMyOrg"
   owners           = [data.azuread_client_config.current.object_id]
 
-  # Public-client sign-in lets anyone in the tenant get a token with this agent's identity (azp), so it
+  # Public-client sign-in lets anyone in the tenant get a token from this agent's client app (azp), so it
   # is OFF unless var.allow_test_sign_in is set, for the window in which smoke.py and pressure.py run.
   # Copilot Studio doesn't need it: its connector is a confidential client (Web redirect URI below + a
   # federated credential, see powerplatform.tf).

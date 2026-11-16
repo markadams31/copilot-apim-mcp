@@ -296,6 +296,7 @@ file.
    | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
    | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
    | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
+   | No Entra Agent IDs are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its Agent ID, but destroying the environment around it did not: eight were left after earlier teardowns |
 
 10. **Revoke any roles granted for the build last** (subscription Contributor, Power Platform
     Administrator). Steps 4 and 5 need them.

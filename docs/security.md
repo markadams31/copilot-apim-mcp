@@ -26,14 +26,14 @@ What the design defends against, and where the defence sits:
 |---|---|---|---|
 | **The agent calls a tool it wasn't given** | The model is talked into reading finance data through an agent meant for general questions | The tool isn't listed by the MCP servers that agent uses, and the API policy's allow-list refuses the operation | ✅ |
 | **A valid token is used somewhere else** | One agent's token is presented to an MCP server that agent doesn't use, or to the REST API directly, or to the backend API directly | The MCP server policy (401), the API policy on every path (403), and the network (dropped) | ✅ |
-| **Someone signs in as an agent** | A user obtains a token carrying an agent's client app ID and acts as that agent | Agents' client apps accept no public-client sign-in; the connector authenticates with a managed identity, so there is no secret to steal | ✅ |
+| **Someone signs in with an agent's client app** | A user obtains a token carrying an agent's client app ID (the `azp`), so the gateway treats them as that agent | Agents' client apps accept no public-client sign-in; the connector authenticates with a managed identity, so there is no secret to steal | ✅ |
 | **The agent reads data the user may not see** | A user without finance access asks the Finance Assistant for spending | Delegated access: the database receives the user's identity and refuses | ✅ |
 | **The backend API's own identity is used to get around user permissions** | An app-only tool returns data to anyone | An app role checked at the gateway, a narrow tool, and a database identity that can read one view | ✅ |
 | **The model writes its own query** | "Run `DROP TABLE`", or a crafted filter | Tools take typed parameters; the gateway validates them; the backend API runs one fixed, parameterised statement | ✅ |
 | **A manipulated agent changes data** | The model is steered into setting a forecast to a wrong value | The user's own database permission (only Budget Editors can write), bounded parameters, and the writer recorded by the database. No approval gate and no change history | 🔲 Gated by permission only ([ai-safety.md](ai-safety.md#the-write-tool-as-built)) |
 | **A runaway or abusive agent floods a system** | A loop, or bulk extraction | A rate limit per agent and user | ✅ |
 | **A tool result steers the model** (indirect prompt injection) | A database row containing instructions | Limits the damage, doesn't prevent it: the agent can still only call its own tools, as the user. See [ai-safety.md](ai-safety.md) | ✅ Two crafted tool results were ignored in Preview ([probe 1](ai-safety.md#probes)); weak evidence |
-| **A maker attaches another agent's connector** | The borrowed connector brings that agent's tools | Not prevented by the gateway: the connector *is* the agent's identity. Restrict who can use each connector | ⏳ Confirmed as a gap |
+| **A maker attaches another agent's connector** | The borrowed connector brings that agent's tools | Not prevented by the gateway: the connector carries that agent's client app, which is what the gateway trusts. Restrict who can use each connector | ⏳ Confirmed as a gap |
 | **A maker adds an uncontrolled tool or knowledge source** | A third-party MCP server, or a public website | The environment's data policy, an allow-list ([governance.md](governance.md)) | ✅ |
 | **Secrets leak** | A client secret in a repository or a connector | There are none: managed identities with federated identity credentials throughout | ✅ |
 | **Payloads leak through logs** | Tool results in telemetry | Request and response bodies aren't logged; Copilot Studio sensitive properties are off. **Tool arguments may still be logged** if they travel in the query string and the gateway log records the URL; on the rapid profile no gateway row held a query string. Conversation transcripts hold tool results | ✅ bodies / ⏳ arguments and transcripts ([observability.md](observability.md#what-is-recorded-and-what-is-not)) |
@@ -143,7 +143,7 @@ Authorisation lives in one place, the gateway, and the network makes it unavoida
 ✅ Smoke test check 8 confirms the backend API is unreachable directly. Don't "fix" this by
 re-implementing per-agent checks in every backend: that is the drift rule 1 exists to prevent.
 
-### 3. An agent's identity is a boundary only if nobody else can use it
+### 3. An agent's client app is a boundary only if nobody else can use it
 
 Per-agent authorisation keys on the token's `azp` claim: which client app requested the token. That
 means something only if nobody else can get a token as that app.
@@ -153,14 +153,14 @@ means something only if nobody else can get a token as that app.
   is no secret to steal. ✅ With the credential removed, sign-in fails (`AADSTS70025`).
 - A **public client** has no credential, so anyone in the tenant can get a token with that app's
   `azp`. The agents' client apps have public-client sign-in **off** by default. ✅ A public-client
-  sign-in as an agent is refused (`invalid_client`, `AADSTS7000218`).
+  sign-in with an agent's client app is refused (`invalid_client`, `AADSTS7000218`).
 - The test scripts need public-client sign-in **on**, because they play the agent's part. Turn it on
   for the length of a test run (`-var allow_test_sign_in=true`), then apply again without it. While it
   is on, the agent boundary doesn't hold.
 - ⏳ **"Assignment required"** isn't set on the agents' enterprise applications, so any user in the
   tenant can try to use any agent's client app. The data they reach is still limited by rule 4.
 
-**The connector is the agent's identity.** A maker who attaches another agent's connector to their own
+**The connector carries the agent's client app.** A maker who attaches another agent's connector to their own
 agent gets that agent's tools, and the audit trace then names the connector's agent. This was
 confirmed with a real agent and is not prevented by the gateway ⏳. Restrict who can use and share each
 connector, and cross-check the audit trace against Copilot Studio telemetry
