@@ -38,7 +38,12 @@ resource "azuread_group" "environment_users" {
   display_name     = "${var.prefix}-agents-environment-users"
   description      = "People who can use the ${var.prefix}-agents Power Platform environment."
   security_enabled = true
-  members          = [data.azuread_user.maker.object_id]
+  # The maker, plus everyone who uses the agents' data: they need a Dataverse user to chat with an agent.
+  members = distinct(concat(
+    [data.azuread_user.maker.object_id],
+    [for u in data.azuread_user.finance_readers : u.object_id],
+    [for u in data.azuread_user.budget_editors : u.object_id],
+  ))
 }
 
 # Managed Environment: required for VNet support, and where agent sharing limits live.
