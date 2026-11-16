@@ -297,6 +297,26 @@ an agent on top of it:
   comes from the admin API (`az rest ... /apis?$filter=IsCustomApi eq true`, then
   `connectionParameters.token.oAuthSettings.properties.FederatedIdentityCredentials`).
 - **A new connection needs a human**: a sign-in popup on the desktop. Don't delete a pending connection.
+- **The "Add MCP server" wizard "hangs" when the create call returns 409.** The Add button greys out and the dialog
+  never closes, with no error. The browser's network log shows `POST …/api/botmanagement/v1/environments/<env>/connectors/apim`
+  answering **HTTP 409 (Conflict)** after about two minutes, and no connector exists. It failed five times with the
+  server name "Contoso Directory (Employee)" (including with a different URL), and **succeeded on the first try
+  with a different name, "Contoso Employee Directory"**, with every other value identical (it appeared in the API
+  list about two minutes later). So the conflict is on the **name**: most likely an earlier failed attempt left a record
+  that the connector list doesn't show, though the parentheses could also matter (not separated). If the wizard
+  spins, check the network log for a 409 and **change the server name**. The wizard fields (Manual, client id,
+  placeholder secret, Entra URLs, scope) are in docs/add-mcp-tool-to-agent.md.
+- **Finding the connector's managed-identity subject (changed).** On 2026-11-16 the Power Platform admin API listing
+  (`…/scopes/admin/environments/<env>/apis?$filter=IsCustomApi eq true`) no longer returned
+  `FederatedIdentityCredentials` for any connector, including ones that work, and the CLI guest could not read the
+  connector through Dataverse. The subject has the form
+  `/eid1/c/pub/t/<tenant>/a/<app>/<region>_<connector name>`; the `t/…/a/…` part is the same for every connector in a
+  tenant, so copy an existing connector's subject and change only the last segment to the new connector's name
+  (for example `australia-001_new-5fcontoso-20employee-20directory-5f61f3160b34451360`). It worked first time: the
+  connection signed in, and Entra would reject a wrong subject. The Power Apps *Custom connectors → Security* box
+  also shows the subject if you can read it. The editor's Client ID field goes blank once managed identity is selected.
+- **The connection sign-in popup is blocked when my automation clicks Create.** The panel then says "Unable to sign
+  in. Please try again." A person clicking **Create** gets the popup (allow popups for copilotstudio.microsoft.com).
 - **Copilot Studio Evaluate** failed to load ("Can't load data") on a draft agent. Not resolved.
 - The Microsoft Copilot harness agent editor has **no Triggers section** here (Microsoft documents one, in preview); channels are Teams and Microsoft
   365, a demo website and an app. Its MCP tool dialog has per-tool permission toggles (enable or disable),
@@ -305,3 +325,123 @@ an agent on top of it:
 - `ApiManagementGatewayMCPLog.ClientName` is `McpToolsListClient` / `AgenticLoop` for this harness.
 - The finance `cost_centres.name` column is 80 characters, which limits injection-style test data.
 - Gateway logs on Basic v2 did not record query strings, contrary to an earlier observation.
+
+## Teams and workflows: what we learned (2026-11-16)
+
+- **Publishing an agent to Teams (Microsoft Copilot harness):** the Build tab's Channels "+" offers
+  *Teams + Microsoft 365* and *App*; *Demo website* is greyed out by the data policy. Pick **Microsoft
+  Teams only** or *Microsoft Copilot and Microsoft Teams*: the setting can't be changed after publishing.
+  Add the channel, **Publish** again, then *Use and share → View in Microsoft Teams* opens the install card.
+  Memory is a toggle on the same panel (off by default).
+- **Who can do what.** The licensed work account here holds only *Power Platform Administrator*, so the
+  Teams admin center refuses it ("You don't have access"). The Global Administrator was a separate guest
+  login with **no Teams license**, so Graph Teams endpoints (`/appCatalogs/teamsApps`) fail for it with
+  "Failed to get license information for the user". To open the Teams admin center as the licensed
+  user, assign *Teams Administrator* (template id `69091246-20e8-4a56-aa4d-066075b2a7a8`) with
+  `POST /roleManagement/directory/roleAssignments`, then **sign out and back in**: an existing browser
+  session won't carry the new role.
+- **Teams install worked in the end, and we did not change anything that fixed it.** The first two **Add** attempts in
+  Teams on the web (about two hours after the channel was added and the agent republished) ended with "App
+  package can't be uploaded. Unknown Exception". A **third attempt succeeded**; the agent's greeting is
+  timestamped 04:23 UTC in the chat. We had granted **no** role yet (Teams Administrator 04:26 UTC, AI
+  Administrator 04:41 UTC, from the tenant audit log), changed **no** policy, and the Teams and Microsoft 365
+  admin centers were still failing an hour later. So the cause was a delay in a brand-new tenant, not a missing
+  permission. We cannot prove which delay (Teams app provisioning, the agent's catalog entry, or the trial
+  tenant's backend). The click that worked was not watched, so we don't know whether it simply retried the
+  same call.
+- **What to do if you hit it:** add the Teams channel (Teams only unless you need Copilot), republish, use *Use
+  and share → View in Microsoft Teams*, and press **Add**. If you get "App package can't be uploaded", **wait
+  and retry; give a new tenant a few hours before changing any policy or role**. You do not need the Teams
+  or Microsoft 365 admin centers for an end user to install a shared agent. The sign that it worked is the
+  button changing from Add to **Open** and the agent appearing in the Chat list. In the chat the user sees
+  streamed steps ("Calling directory_get_my_profile…"), then the answer; no connection prompt appeared for the
+  maker, whose connections already existed.
+- **"App package can't be uploaded. Unknown Exception"** on Teams *Add* (resolved by waiting, see above): the agent never reached the app
+  catalog. At the time, the Teams admin center said app management was being set up (up to 30 minutes)
+  and its Actions menu (Upload new app, Org-wide app settings) was greyed out. Retry after the banner
+  clears before changing anything. **App permission policies are retired** in this tenant (the page redirects to
+  Manage apps); app availability and custom-app interaction are now managed under *Manage apps → Org-wide app
+  settings* and per-app availability, so look there, not in Permission policies.
+- **Things we tried that turned out not to be needed** (so you can skip them): granting the work account *Teams
+  Administrator* and then *AI Administrator*; signing in to the Teams and Microsoft 365 admin centers; checking
+  app permission policies (retired in this tenant); loosening the data policy. The *Agent and plugin access* and
+  *User access* panels in the Microsoft 365 admin center kept showing "Error fetching settings" even with AI
+  Administrator, and Teams *Org-wide app settings* stayed greyed out, yet the install worked. **A Global
+  Administrator that is a guest backed by a personal Microsoft account cannot sign in to these admin portals**
+  ("Login is not supported for consumer users"); create a cloud-only admin user if you need them.
+  Role changes take effect in the browser only after you sign in again.
+- **Where Microsoft says to look when an agent can't be installed** (Learn: "Your organization has prevented
+  this agent from being installed"): Microsoft 365 admin center → *Agents → Settings → Agent and plugin
+  access* ("Allow agents and plugins built by your organization") and *User access*; Teams admin center →
+  *Manage apps → Org-wide app settings* (custom apps). An agent shared by a Copilot Studio install link is
+  governed by *Let users interact with custom apps in preview*; once it is in the org catalog, per-app
+  availability and Status govern it instead. Settings take a few hours; app availability up to 24 hours.
+  Community fixes: toggle the Teams channel off and on and republish; use the install link from the
+  publish dialog. No source matched the exact "App package can't be uploaded" text.
+- **Workflow with an Agent node: it worked once the data policy had propagated.** Publish succeeded about 2h40
+  after the last policy change; the first run fired on publish and took 16 s (about 0.26 credits). The agent
+  returned the maker's directory profile and the cost centres; the gateway log showed both tool calls. The
+  workflow's **Enabled toggle** on *Workflows* (left menu) stops the schedule; its row's *More actions* menu was
+  disabled right after switching it off, so delete it later (or from the Power Automate portal). Always turn it off
+  after a test: it bills every run.
+- **A workflow's Agent node needs the Agents connector (`shared_agentnode`)** in the data policy
+  (`allow_workflow_agents`). Connection creation can succeed while **Publish still fails**: the designer's
+  generic "couldn't load suggestions for some fields" banner hides Dataverse error `0x80060467` wrapping a
+  **442** DLP block on `GetOutputSchema`. To read it, wrap `window.fetch` in the page before clicking
+  Publish and search the failed `$batch` response for `Last refresh`; that time is the policy cache's,
+  and it can lag the policy by hours. Compare it with the policy's `lastModifiedTime`:
+  `az rest` against `https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v2/policies?api-version=2016-11-01`
+  (resource `https://api.bap.microsoft.com/`). No API shows enforcement directly; replaying the connector
+  call from the CLI fails ("missing connection ACL"), because the connection belongs to the browser session.
+- **`permissive_data_policy`** (rapid profile, default false) classifies unlisted connectors as Business
+  instead of Blocked. The provider's group names differ: the policy default uses `Confidential` for Business,
+  the custom-connector patterns use `Business`. Use it only in short-lived test environments.
+- **Chat context in Teams** persists across days; there is no "new chat" button (type *Restart* or *Start
+  again*). The Microsoft Copilot harness keeps the last 100 messages. Design repeatable tasks around one
+  conversation per task. See the research in [testing.md](docs/testing.md#evidence-gaps).
+- **Don't click the red badge on a workflow node**: it is the delete button, not an error indicator.
+
+## Calling a Microsoft Copilot harness agent from your own web page (2026-11-16)
+
+Worked end to end when Teams and the admin portals were failing. A browser page signs the user in with Entra
+and chats with the published agent; the agent called both tools through the gateway.
+
+- **Start from Microsoft's sample, don't write one:** `microsoft/Agents` → `samples/nodejs/copilotstudio-webclient`
+  (about 4 KB: `index.html`, `index.js`, `acquireToken.js`, `settings.TEMPLATE.js`, MIT). It loads Web Chat,
+  msal-browser and `@microsoft/agents-copilotstudio-client` from unpkg at pinned versions. Serve the `web`
+  folder on `127.0.0.1:5500` (`python3 -m http.server 5500 --bind 127.0.0.1`).
+- **Use `directConnectUrl`, not `environmentId` + `schemaName`, for this harness.** With the environment id and
+  schema name the sample reaches the classic runtime and the agent answers "This action doesn't support
+  agents built with the GitHub Copilot harness." Copy the **connection string** from the agent's *Channels →
+  + → App → Microsoft 365 Agents SDK* panel into `directConnectUrl`; it points at
+  `…/copilotstudio/agenticruntime/3p/dataverse-backed/authenticated/bots/<schema name>/conversations?api-version=2022-03-01-preview`.
+  The channel is not added unless you save it; closing the panel changes nothing.
+- **App registration** (Microsoft's README): single-tenant, platform *Single-page application*, redirect
+  `http://localhost:5500` (the port must match), no secret, delegated permission
+  *Power Platform API → CopilotStudio → `CopilotStudio.Copilots.Invoke`* (scope id
+  `204440d3-c1d0-4826-b570-99eb6f5e2aeb` on app id `8578e004-a5c6-46e7-913e-12f58912df43`, which already
+  existed in the tenant). The first sign-in shows a consent screen ("Allows Invoking Copilots", "Sign you in
+  and read your profile"); the user accepts it. The sample requests `https://api.powerplatform.com/.default`.
+- **The sample's `loginPopup` is blocked by Chrome** (`popup_window_error`) because it is not user-initiated.
+  Swap it for `handleRedirectPromise()` + `loginRedirect()` in `acquireToken.js` (same-tab redirect). Hard
+  reload (`Ctrl+Shift+R`) after editing, or the browser serves the cached script.
+- **Result:** the agent greeted the user, returned the directory profile and the cost centres, and said the
+  cost-centre service ran under its own identity and recorded the user as the asker, as designed.
+- **Create the registration with the CLI** (single-tenant SPA, no secret; the `notes` field says what it is):
+  ```bash
+  az rest --method post --url "https://graph.microsoft.com/v1.0/applications" \
+    --headers "Content-Type=application/json" --body '{
+      "displayName": "Copilot Studio web client (test, delete when done)",
+      "signInAudience": "AzureADMyOrg",
+      "spa": { "redirectUris": ["http://localhost:5500"] },
+      "requiredResourceAccess": [{ "resourceAppId": "8578e004-a5c6-46e7-913e-12f58912df43",
+        "resourceAccess": [{ "id": "204440d3-c1d0-4826-b570-99eb6f5e2aeb", "type": "Scope" }] }]}'
+  ```
+  Put the returned `appId` and your tenant id in the sample's `settings.js` (`appClientId`, `tenantId`).
+- **The one code change**, in `acquireToken.js`: after `await msalInstance.initialize()` add
+  `const r = await msalInstance.handleRedirectPromise(); if (r) return r.accessToken`, and replace the final
+  `loginPopup(...)` call with `await msalInstance.loginRedirect(loginRequest); return new Promise(() => {})`.
+- **Governance note:** this is a public client with a delegated permission only (no secret, nothing app-only).
+  It is a test tool; it is deliberately not part of the repo's deliverable, so keep it out of the reference solution.
+- **Throwaway:** the registration was "THROWAWAY Copilot Studio SPA test (delete me)" created with
+  `POST /applications`; delete it with `az ad app delete --id <appId>` and stop the local server when done.

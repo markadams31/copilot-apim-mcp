@@ -207,7 +207,33 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
 - Baseline quality: seed an Evaluate test set and run the cheap containment probes (4, 6 and 8;
   [testing.md](testing.md#testing-the-agent-evals)). The smoke test proves the gateway, not the agent.
 - Day-2 changes (new tools, users, agents): [operate.md](operate.md#tools-servers-and-agents).
+- Give users the agent: [Make the agent available to users](#make-the-agent-available-to-users).
 - Tear down: [Teardown](#teardown).
+
+### Make the agent available to users
+
+Verified on the Microsoft Copilot harness, rapid profile, in a new trial tenant.
+
+1. In Copilot Studio, open the agent. **Channels → + → Teams + Microsoft 365.** Choose **Microsoft Teams only** (or
+   Microsoft Copilot and Teams): the choice **cannot be changed after publishing**. Add the channel, then **Publish**
+   again. The data policy in this repo already allows this channel; it blocks the demo website and Direct Line.
+2. Open the channel → **Use and share → View in Microsoft Teams**. The install card shows the agent and its permissions.
+   Press **Add**, then **Open**. The agent greets the user and the chat appears in their chat list.
+3. Ask a question that needs a tool. The user sees streamed steps ("Calling directory_get_my_profile…") and then the
+   answer. A user who has not connected to the tools yet is asked to sign in to each connection the first time.
+
+**If Add fails** with "App package can't be uploaded. Unknown Exception", **wait and retry** (give a brand-new tenant a few
+hours). In our run it worked on the third attempt about two hours after the channel was added, with no policy or role
+change. Do not start changing tenant settings first. The Teams admin center ("setting up app management", Actions menus
+greyed out) and the Microsoft 365 admin center (agent settings: "Error fetching settings") were still failing after the
+install worked, and an end user does not need them. If you do reach those settings, the documented places are
+Teams admin center → Manage apps → Org-wide app settings, and Microsoft 365 admin center → Agents → Settings. Agent settings
+need an Entra role such as AI Administrator or Global Administrator, and **an admin portal won't sign in a consumer
+(personal Microsoft account) login**, so keep a cloud-only admin user. More in
+[AGENTS.md](../AGENTS.md#teams-and-workflows-what-we-learned-2026-11-16).
+
+**No Teams?** A web page can talk to the agent with Microsoft's sample client:
+[AGENTS.md](../AGENTS.md#calling-a-microsoft-copilot-harness-agent-from-your-own-web-page-2026-11-16).
 
 ## Teardown
 
