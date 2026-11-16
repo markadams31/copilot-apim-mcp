@@ -217,3 +217,13 @@ variable "entra_diagnostics" {
   type        = bool
   default     = true
 }
+
+variable "permissive_data_policy" {
+  description = <<-EOT
+    Test-environment escape hatch. Classifies every connector not listed as Business instead of Blocked, so
+    nothing needs allowing one by one. It removes the deny-by-default posture this policy exists to show:
+    leave false except in a short-lived test environment.
+  EOT
+  type        = bool
+  default     = false
+}

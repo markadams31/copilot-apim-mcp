@@ -55,7 +55,7 @@ locals {
 
 resource "powerplatform_data_loss_prevention_policy" "agents" {
   display_name                      = "${var.prefix} agents: allow-list"
-  default_connectors_classification = "Blocked"
+  default_connectors_classification = var.permissive_data_policy ? "Confidential" : "Blocked"
   environment_type                  = "OnlyEnvironments"
   environments                      = [powerplatform_environment.agents.id]
 
@@ -86,7 +86,7 @@ resource "powerplatform_data_loss_prevention_policy" "agents" {
     {
       order            = 2
       host_url_pattern = "*"
-      data_group       = "Blocked"
+      data_group       = var.permissive_data_policy ? "Business" : "Blocked"
     },
   ]
 }

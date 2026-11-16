@@ -81,3 +81,8 @@ variable "alert_email" {
   type    = string
   default = ""
 }
+
+variable "permissive_data_policy" {
+  type    = bool
+  default = false
+}

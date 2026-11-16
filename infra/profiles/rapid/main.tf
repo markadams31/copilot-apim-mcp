@@ -57,5 +57,6 @@ module "gateway" {
   allow_agent_triggers       = var.allow_agent_triggers
   allow_workflow_agents      = var.allow_workflow_agents
   allow_triggered_agent_demo = var.allow_triggered_agent_demo
+  permissive_data_policy     = var.permissive_data_policy
   alert_email                = var.alert_email
 }
