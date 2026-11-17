@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
-# The gateway: API Management imports the internal systems' REST API once, then exposes it as one MCP
-# server per business domain (see local.server_definitions). Authorization, rate limits and the
-# audit trace live in the API policy, so they apply to every path in.
+# The gateway: API Management imports each internal system's REST API (directory, finance, budgeting),
+# then exposes the operations as one MCP server per business domain (see local.server_definitions).
+# Authorization, rate limits and the audit trace live in the API policy, so they apply to every path in.
 # ---------------------------------------------------------------------------
 
 # Secure profile: internal VNet mode (only a private IP, not in public DNS) on the Developer tier, the
@@ -60,7 +60,12 @@ locals {
   # Tool descriptions come from each system's OpenAPI file (one source of truth per backend).
   tool_descriptions = merge(concat(
     [
-      for path, methods in yamldecode(file("${path.module}/../../../backend/openapi.yaml")).paths : {
+      for path, methods in yamldecode(file("${path.module}/../../../backend/directory/openapi.yaml")).paths : {
+        for method, op in methods : op.operationId => trimspace(op.description)
+      }
+    ],
+    [
+      for path, methods in yamldecode(file("${path.module}/../../../backend/finance/openapi.yaml")).paths : {
         for method, op in methods : op.operationId => trimspace(op.description)
       }
     ],
@@ -71,7 +76,7 @@ locals {
     ],
   )...)
 
-  # Shared policy inputs for every REST API the gateway publishes (finance and budgeting).
+  # Shared policy inputs for every REST API the gateway publishes (directory, finance and budgeting).
   api_policy_vars = {
     rate_limit_calls = var.rate_limit_per_minute
     tenant_id        = local.tenant_id
@@ -85,26 +90,47 @@ locals {
 
   # Map APIM API name -> resource, so MCP tools can point at the right API.
   apim_apis = {
-    "internal-systems" = azurerm_api_management_api.tools.name
-    "budgeting"        = azurerm_api_management_api.budgeting.name
+    "directory" = azurerm_api_management_api.directory.name
+    "finance"   = azurerm_api_management_api.finance.name
+    "budgeting" = azurerm_api_management_api.budgeting.name
   }
 }
 
-resource "azurerm_api_management_api" "tools" {
-  name                  = "internal-systems"
+# Contoso directory: its own REST API on the same gateway, backed by the directory Function (Microsoft Graph).
+resource "azurerm_api_management_api" "directory" {
+  name                  = "directory"
   resource_group_name   = azurerm_resource_group.rg.name
   api_management_name   = azapi_resource.apim.name
   revision              = "1"
-  display_name          = "${var.organisation} internal systems API"
-  description           = "Contoso's internal systems, exposed to Copilot Studio agents as MCP tools through the gateway." # matches openapi.yaml; avoids a diff every plan
-  path                  = "tools"
+  display_name          = "${var.organisation} directory API"
+  description           = "Contoso's staff directory (Microsoft Graph), exposed to Copilot Studio agents as an MCP tool through the gateway." # matches openapi.yaml; avoids a diff every plan
+  path                  = "directory"
+  protocols             = ["https"]
+  service_url           = "https://${azurerm_function_app_flex_consumption.directory.default_hostname}/api"
+  subscription_required = false
+
+  import {
+    content_format = "openapi"
+    content_value  = file("${path.module}/../../../backend/directory/openapi.yaml")
+  }
+}
+
+# Contoso finance: its own REST API, backed by the finance Function.
+resource "azurerm_api_management_api" "finance" {
+  name                  = "finance"
+  resource_group_name   = azurerm_resource_group.rg.name
+  api_management_name   = azapi_resource.apim.name
+  revision              = "1"
+  display_name          = "${var.organisation} finance API"
+  description           = "Contoso's finance system, exposed to Copilot Studio agents as MCP tools through the gateway." # matches openapi.yaml; avoids a diff every plan
+  path                  = "finance"
   protocols             = ["https"]
   service_url           = "https://${azurerm_function_app_flex_consumption.func.default_hostname}/api"
   subscription_required = false
 
   import {
     content_format = "openapi"
-    content_value  = file("${path.module}/../../../backend/openapi.yaml")
+    content_value  = file("${path.module}/../../../backend/finance/openapi.yaml")
   }
 }
 
@@ -128,8 +154,15 @@ resource "azurerm_api_management_api" "budgeting" {
 }
 
 # Per-agent, per-operation authorization on every REST API, so it applies to MCP and direct calls.
-resource "azurerm_api_management_api_policy" "tools" {
-  api_name            = azurerm_api_management_api.tools.name
+resource "azurerm_api_management_api_policy" "directory" {
+  api_name            = azurerm_api_management_api.directory.name
+  resource_group_name = azurerm_resource_group.rg.name
+  api_management_name = azapi_resource.apim.name
+  xml_content         = templatefile("${path.module}/policies/api-policy.xml.tftpl", local.api_policy_vars)
+}
+
+resource "azurerm_api_management_api_policy" "finance" {
+  api_name            = azurerm_api_management_api.finance.name
   resource_group_name = azurerm_resource_group.rg.name
   api_management_name = azapi_resource.apim.name
   xml_content         = templatefile("${path.module}/policies/api-policy.xml.tftpl", local.api_policy_vars)
@@ -183,7 +216,7 @@ resource "azapi_resource" "mcp_tool" {
       displayName = each.value.tool
       description = local.tool_descriptions[each.value.tool]
       # Built by hand: the azurerm API id carries ";rev=1", which the tool reference rejects.
-      # each.value.api selects internal-systems or budgeting (multi-API MCP wiring).
+      # each.value.api selects directory, finance or budgeting (multi-API MCP wiring).
       operationId = "${azapi_resource.apim.id}/apis/${local.apim_apis[each.value.api]}/operations/${each.value.tool}"
     }
   }

@@ -1,33 +1,12 @@
 openapi: 3.0.1
 info:
-  title: Contoso internal systems API
+  title: Contoso finance API
   version: "2.0"
-  description: Contoso's internal systems, exposed to Copilot Studio agents as MCP tools through the gateway.
+  description: Contoso's finance system, exposed to Copilot Studio agents as MCP tools through the gateway.
 # Each operation's operationId is a tool name, and its description is what the agent's orchestrator reads
 # to decide when to call it. How the tool authenticates is stated in the description, not the name.
 paths:
-  /directory/me:
-    get:
-      operationId: directory_get_my_profile
-      summary: Get the signed-in person's directory profile
-      description: >-
-        Returns the signed-in person's name, job title, department and email from the company
-        directory. Runs as the signed-in person (delegated access), so it returns only what they could
-        see themselves. Use when the person asks who they are, their job title or their department.
-      responses:
-        "200":
-          description: The person's directory profile
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  displayName: { type: string }
-                  jobTitle: { type: string, nullable: true }
-                  department: { type: string, nullable: true }
-                  mail: { type: string, nullable: true }
-                  userPrincipalName: { type: string }
-  /finance/cost-centres:
+  /cost-centres:
     get:
       operationId: finance_list_cost_centres
       summary: List Contoso's cost centres
@@ -55,7 +34,7 @@ paths:
                         code: { type: string }
                         name: { type: string }
                         department: { type: string }
-  /finance/spend:
+  /spend:
     get:
       operationId: finance_query_spend
       summary: Total spending by category for a date range

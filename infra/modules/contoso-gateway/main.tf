@@ -70,13 +70,12 @@ locals {
     })
   }
 
-  # Which APIM API each tool's REST operation lives on. Finance and directory share internal-systems;
-  # budgeting is a second Contoso system with its own API and backend.
+  # Which APIM API each tool's REST operation lives on: each internal system has its own API and backend.
   tool_api = {
-    directory_get_my_profile              = "internal-systems"
-    finance_list_cost_centres             = "internal-systems"
-    finance_query_spend                   = "internal-systems"
-    diagnostics_caller                    = "internal-systems"
+    directory_get_my_profile              = "directory"
+    finance_list_cost_centres             = "finance"
+    finance_query_spend                   = "finance"
+    diagnostics_caller                    = "finance"
     budgeting_get_forecast                = "budgeting"
     budgeting_update_cost_centre_forecast = "budgeting"
   }
@@ -153,6 +152,7 @@ module "network" {
   private_endpoint_targets = {
     func      = { id = azurerm_function_app_flex_consumption.func.id, subresource = "sites", zone = "sites" }
     budgeting = { id = azurerm_function_app_flex_consumption.budgeting.id, subresource = "sites", zone = "sites" }
+    directory = { id = azurerm_function_app_flex_consumption.directory.id, subresource = "sites", zone = "sites" }
     sql       = { id = azurerm_mssql_server.sql.id, subresource = "sqlServer", zone = "sql" }
     blob      = { id = azurerm_storage_account.sa.id, subresource = "blob", zone = "blob" }
     queue     = { id = azurerm_storage_account.sa.id, subresource = "queue", zone = "queue" }

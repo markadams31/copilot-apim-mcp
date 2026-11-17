@@ -60,10 +60,10 @@ async def tools_listed(agent: str, token: str) -> list[str]:
 
 # REST facade: (APIM API path, operation URL path) for checks that skip the MCP server.
 TOOL_ROUTES = {
-    "directory_get_my_profile": ("tools", "directory/me"),
-    "finance_list_cost_centres": ("tools", "finance/cost-centres"),
-    "finance_query_spend": ("tools", "finance/spend"),
-    "diagnostics_caller": ("tools", "diagnostics/caller"),
+    "directory_get_my_profile": ("directory", "me"),
+    "finance_list_cost_centres": ("finance", "cost-centres"),
+    "finance_query_spend": ("finance", "spend"),
+    "diagnostics_caller": ("finance", "diagnostics/caller"),
     "budgeting_get_forecast": ("budgeting", "forecasts"),
     "budgeting_update_cost_centre_forecast": ("budgeting", "forecasts"),
 }
@@ -96,7 +96,12 @@ def rest_url(op: str, args: dict | None = None) -> str:
 
 
 # Token cache, so re-runs don't need fresh sign-ins (gitignored; delete to sign in again).
-CACHE_FILE = Path(__file__).parent / ".msal_cache.json"
+# CONTOSO_MSAL_CACHE: a different cache file, to hold a second person's sign-in.
+# CONTOSO_LOGIN_AS: sign in as this user (offers the account picker instead of reusing the browser session).
+CACHE_FILE = Path(
+    os.environ.get("CONTOSO_MSAL_CACHE") or Path(__file__).parent / ".msal_cache.json"
+)
+LOGIN_AS = os.environ.get("CONTOSO_LOGIN_AS")
 cache = msal.SerializableTokenCache()
 if os.path.exists(CACHE_FILE):
     with open(CACHE_FILE) as f:
@@ -126,7 +131,15 @@ def sign_in(agent: str, fresh: bool = False) -> str:
         # Falls back to device code when there's no browser (e.g. over SSH).
         try:
             print(f"\n[{agent}] Signing in via your browser...", flush=True)
-            result = app.acquire_token_interactive(SCOPE, timeout=180)
+            result = app.acquire_token_interactive(
+                SCOPE,
+                timeout=180,
+                **(
+                    {"login_hint": LOGIN_AS, "prompt": "select_account"}
+                    if LOGIN_AS
+                    else {}
+                ),
+            )
         except Exception as e:  # noqa: BLE001 - any browser failure -> device code
             print(
                 f"[{agent}] Browser sign-in unavailable ({e}); using a device code.",
@@ -325,22 +338,24 @@ async def main():
     if SECURE:
         # On the VPN its name resolves to the private endpoint, which the NSG opens to APIM's subnet only.
         async with httpx2.AsyncClient(timeout=10) as http:
-            try:
-                direct = (
-                    await http.get(
-                        f"{out['function_url']}/diagnostics/caller", headers=auth
-                    )
-                ).status_code
-            except httpx2.TransportError as e:  # unreachable is the goal
-                direct = type(e).__name__
+            direct = {}
+            for system, url in (
+                ("finance", f"{out['function_url']}/diagnostics/caller"),
+                ("directory", f"{out['directory_function_url']}/me"),
+                ("budgeting", f"{out['budgeting_function_url']}/forecasts"),
+            ):
+                try:
+                    direct[system] = (await http.get(url, headers=auth)).status_code
+                except httpx2.TransportError as e:  # unreachable is the goal
+                    direct[system] = type(e).__name__
         check(
-            "8. Function refuses direct calls (gateway only)",
-            direct not in range(200, 300),
+            "8. Functions refuse direct calls (gateway only)",
+            all(code not in range(200, 300) for code in direct.values()),
             f"{direct} via {resolve(out['function_url'])}",
         )
     else:
         skip(
-            "8. Function refuses direct calls (gateway only)",
+            "8. Functions refuse direct calls (gateway only)",
             "rapid profile: the backend is public by design; proven only on secure",
         )
 
@@ -376,25 +391,32 @@ async def main():
     # Secretless: with obo_credential = managed_identity there is no client secret anywhere.
     if out["obo_credential"] == "managed_identity":
         try:
-            settings = json.loads(
-                subprocess.check_output(
-                    [
-                        "az",
-                        "functionapp",
-                        "config",
-                        "appsettings",
-                        "list",
-                        "-g",
-                        out["resource_group"],
-                        "-n",
-                        out["function_name"],
-                        "-o",
-                        "json",
-                    ],
-                    text=True,
-                    stderr=subprocess.DEVNULL,
+            names = set()
+            for fn_output in (
+                "function_name",
+                "directory_function_name",
+                "budgeting_function_name",
+            ):
+                settings = json.loads(
+                    subprocess.check_output(
+                        [
+                            "az",
+                            "functionapp",
+                            "config",
+                            "appsettings",
+                            "list",
+                            "-g",
+                            out["resource_group"],
+                            "-n",
+                            out[fn_output],
+                            "-o",
+                            "json",
+                        ],
+                        text=True,
+                        stderr=subprocess.DEVNULL,
+                    )
                 )
-            )
+                names |= {s["name"] for s in settings}
             secrets = json.loads(
                 subprocess.check_output(
                     [
@@ -412,9 +434,8 @@ async def main():
                     stderr=subprocess.DEVNULL,
                 )
             )
-            names = {s["name"] for s in settings}
             ok = "API_CLIENT_SECRET" not in names and not secrets
-            detail = f"function has API_CLIENT_SECRET: {'API_CLIENT_SECRET' in names}; app secrets: {len(secrets)}"
+            detail = f"the Functions have API_CLIENT_SECRET: {'API_CLIENT_SECRET' in names}; app secrets: {len(secrets)}"
         except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
             ok, detail = False, f"could not read: {e}"
         check("11. no client secret anywhere (managed identity)", ok, detail)

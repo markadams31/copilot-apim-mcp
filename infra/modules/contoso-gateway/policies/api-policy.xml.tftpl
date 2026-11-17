@@ -3,8 +3,9 @@
     <base />
     <!--
       Authorization for EVERY path into the REST API: MCP tool calls from any agent's MCP server,
-      and direct calls to the REST facade (/tools/...). An MCP server's policy only guards
-      that server's front door; without this, an agent could skip it and call /tools/<op> directly.
+      and direct calls to the REST facade (/directory/..., /finance/..., /budgeting/...). An MCP server's
+      policy only guards that server's front door; without this, an agent could skip it and call the
+      REST operation directly.
     -->
     <validate-azure-ad-token tenant-id="${tenant_id}" header-name="Authorization"
         failed-validation-httpcode="401" failed-validation-error-message="Unauthorized."

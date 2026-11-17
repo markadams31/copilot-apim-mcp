@@ -1,4 +1,4 @@
-"""Contoso internal systems API: a plain REST API that the gateway (API Management) exposes to Copilot
+"""Contoso finance system API: a plain REST API that the gateway (API Management) exposes to Copilot
 Studio agents as MCP tools. See docs/architecture.md.
 
 Auth is handled before this code runs:
@@ -7,7 +7,6 @@ Auth is handled before this code runs:
 So every request that reaches these handlers carries a valid token for the gateway API.
 
 Tools:
-- directory_get_my_profile   Microsoft Graph, as the person (delegated, on-behalf-of)
 - finance_list_cost_centres  finance database, as this service (app-only, managed identity)
 - finance_query_spend        finance database, as the person (delegated, on-behalf-of)
 """
@@ -19,7 +18,6 @@ import os
 import struct
 
 import azure.functions as func
-import requests
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ManagedIdentityCredential, OnBehalfOfCredential
 
@@ -107,30 +105,10 @@ def _sql_connect(token: str):
     )
 
 
-# ---- Directory ------------------------------------------------------------------------------------------
-
-
-@app.route(route="directory/me", methods=["GET"])
-def directory_get_my_profile(req: func.HttpRequest) -> func.HttpResponse:
-    """Delegated: Graph returns what the person may see about themselves (User.Read)."""
-    token = _obo(req, "https://graph.microsoft.com/User.Read")
-    if isinstance(token, func.HttpResponse):
-        return token
-    graph = requests.get(
-        "https://graph.microsoft.com/v1.0/me"
-        "?$select=displayName,jobTitle,department,mail,userPrincipalName",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
-    )
-    return func.HttpResponse(
-        graph.text, status_code=graph.status_code, mimetype="application/json"
-    )
-
-
 # ---- Finance --------------------------------------------------------------------------------------------
 
 
-@app.route(route="finance/cost-centres", methods=["GET"])
+@app.route(route="cost-centres", methods=["GET"])
 def finance_list_cost_centres(req: func.HttpRequest) -> func.HttpResponse:
     """App-only: read reference data as this Function's own identity, not as the caller.
 
@@ -204,7 +182,7 @@ def _spend_parameters(
     return category, start, end
 
 
-@app.route(route="finance/spend", methods=["GET"])
+@app.route(route="spend", methods=["GET"])
 def finance_query_spend(req: func.HttpRequest) -> func.HttpResponse:
     """Delegated: total spending by category, queried as the person.
 

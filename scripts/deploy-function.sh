@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Deploy backend Function apps. The dependencies are built here, for Linux and Python 3.13, and shipped
+# Deploy the three backend Function apps (directory, finance, budgeting). The dependencies are built here, for Linux and Python 3.13, and shipped
 # in the zip: Flex Consumption's remote build used Python 3.12.2 even when the app was set to 3.13, so it
 # couldn't install azure-functions 2.x. Needs uv. Keep `python_version` equal to runtime_version in
 # infra/modules/contoso-gateway/backend.tf.
 #
-#   scripts/deploy-function.sh [secure|rapid]              # finance + budgeting
+#   scripts/deploy-function.sh [secure|rapid]              # directory + finance + budgeting
+#   scripts/deploy-function.sh [secure|rapid] directory    # directory only
 #   scripts/deploy-function.sh [secure|rapid] finance      # finance only
 #   scripts/deploy-function.sh [secure|rapid] budgeting    # budgeting only
 #
@@ -36,17 +37,21 @@ deploy_one() {
 
 case "$which" in
   all)
-    deploy_one "$root/backend" function_name
+    deploy_one "$root/backend/directory" directory_function_name
+    deploy_one "$root/backend/finance" function_name
     deploy_one "$root/backend/budgeting" budgeting_function_name
     ;;
+  directory)
+    deploy_one "$root/backend/directory" directory_function_name
+    ;;
   finance)
-    deploy_one "$root/backend" function_name
+    deploy_one "$root/backend/finance" function_name
     ;;
   budgeting)
     deploy_one "$root/backend/budgeting" budgeting_function_name
     ;;
   *)
-    echo "usage: $0 [secure|rapid] [all|finance|budgeting]" >&2
+    echo "usage: $0 [secure|rapid] [all|directory|finance|budgeting]" >&2
     exit 1
     ;;
 esac

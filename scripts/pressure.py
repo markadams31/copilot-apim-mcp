@@ -97,7 +97,7 @@ async def main():
         for agent in AGENTS:
             h = {"Authorization": f"Bearer {tokens[agent]}"}
             while (
-                r := await http.get(f"{GATEWAY}/tools/diagnostics/caller", headers=h)
+                r := await http.get(f"{GATEWAY}/finance/diagnostics/caller", headers=h)
             ).status_code == 429:
                 wait = int(r.headers.get("Retry-After", "30")) + 2
                 print(
@@ -197,7 +197,7 @@ async def main():
     async with httpx2.AsyncClient(timeout=60) as http:
         for name, tok, expect in cases:
             h = {"Authorization": f"Bearer {tok}"} if tok else {}
-            r = await http.get(f"{GATEWAY}/tools/diagnostics/caller", headers=h)
+            r = await http.get(f"{GATEWAY}/finance/diagnostics/caller", headers=h)
             rows.append((name, expect, r.status_code, r.status_code == expect))
     report("3. Forged and foreign tokens", rows, ["token", "expected", "got"])
 
@@ -245,7 +245,7 @@ async def main():
     async with httpx2.AsyncClient(timeout=60) as http:
         for _ in range(RATE_LIMIT + 10):
             r = await http.get(
-                f"{GATEWAY}/tools/diagnostics/caller",
+                f"{GATEWAY}/finance/diagnostics/caller",
                 headers={"Authorization": f"Bearer {good}"},
             )
             codes.append(r.status_code)

@@ -86,7 +86,7 @@ resource "azuread_application_password" "api_obo" {
 
 # Entra ID trusts tokens that each Function's managed identity gets for api://AzureADTokenExchange,
 # as if they were this app's secret. Only a user-assigned identity can be used this way. One credential
-# per backend Function (finance and budgeting).
+# per backend Function (finance, budgeting and directory).
 resource "azuread_application_federated_identity_credential" "api_obo" {
   count          = local.obo_uses_managed_identity ? 1 : 0
   application_id = azuread_application.api.id
@@ -104,6 +104,16 @@ resource "azuread_application_federated_identity_credential" "api_obo_budgeting"
   description    = "The budgeting Function's user-assigned managed identity authenticates the on-behalf-of exchange (no client secret)"
   issuer         = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
   subject        = azurerm_user_assigned_identity.budgeting.principal_id
+  audiences      = ["api://AzureADTokenExchange"]
+}
+
+resource "azuread_application_federated_identity_credential" "api_obo_directory" {
+  count          = local.obo_uses_managed_identity ? 1 : 0
+  application_id = azuread_application.api.id
+  display_name   = "directory-function-managed-identity"
+  description    = "The directory Function's user-assigned managed identity authenticates the on-behalf-of exchange (no client secret)"
+  issuer         = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
+  subject        = azurerm_user_assigned_identity.directory.principal_id
   audiences      = ["api://AzureADTokenExchange"]
 }
 

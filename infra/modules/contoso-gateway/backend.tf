@@ -1,6 +1,7 @@
 # ---------------------------------------------------------------------------
-# The internal systems' API: an Azure Function (Flex Consumption) with built-in auth, in front of
-# Microsoft Graph (the directory) and an Azure SQL database (finance).
+# One Azure Function (Flex Consumption, built-in auth) for each internal system: finance (an Azure SQL
+# database), budgeting (a second database) and the directory (Microsoft Graph). Each has its own compute,
+# identity and deploy container, like three systems owned by three teams.
 # Network settings come from the derived flags in main.tf: private in the secure profile, public with
 # Entra authentication in the rapid one.
 # ---------------------------------------------------------------------------
@@ -25,6 +26,12 @@ resource "azurerm_storage_container" "deploy_budgeting" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_container" "deploy_directory" {
+  name                  = "deploy-directory"
+  storage_account_id    = azurerm_storage_account.sa.id
+  container_access_type = "private"
+}
+
 resource "azurerm_service_plan" "plan" {
   name                = "asp-${var.prefix}-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
@@ -33,9 +40,17 @@ resource "azurerm_service_plan" "plan" {
   sku_name            = "FC1"
 }
 
-# Flex Consumption allows only one site per plan, so budgeting needs its own.
+# Flex Consumption allows only one site per plan, so budgeting and the directory need their own.
 resource "azurerm_service_plan" "budgeting" {
   name                = "asp-${var.prefix}-budg-${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Linux"
+  sku_name            = "FC1"
+}
+
+resource "azurerm_service_plan" "directory" {
+  name                = "asp-${var.prefix}-dir-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   os_type             = "Linux"
@@ -57,7 +72,7 @@ resource "azurerm_application_insights" "ai" {
   application_type    = "web"
 }
 
-# The Function's identity. User-assigned, because only a user-assigned managed identity can be a
+# The finance Function's identity. User-assigned, because only a user-assigned managed identity can be a
 # federated credential on an app registration (the on-behalf-of exchange), and the app-only tool reads
 # SQL as this same identity.
 resource "azurerm_user_assigned_identity" "func" {
@@ -172,6 +187,69 @@ resource "azurerm_function_app_flex_consumption" "budgeting" {
       MANAGED_IDENTITY_CLIENT_ID = azurerm_user_assigned_identity.budgeting.client_id
       SQL_SERVER                 = azurerm_mssql_server.sql.fully_qualified_domain_name
       SQL_DATABASE               = azurerm_mssql_database.budgeting.name
+    },
+    local.obo_uses_managed_identity ? {} : { API_CLIENT_SECRET = azuread_application_password.api_obo[0].value }
+  )
+
+  auth_settings_v2 {
+    auth_enabled           = true
+    require_authentication = true
+    unauthenticated_action = "Return401"
+    default_provider       = "azureactivedirectory"
+
+    active_directory_v2 {
+      client_id            = azuread_application.api.client_id
+      tenant_auth_endpoint = "https://login.microsoftonline.com/${local.tenant_id}/v2.0"
+      allowed_audiences    = [azuread_application.api.client_id, "api://${azuread_application.api.client_id}"]
+    }
+
+    login {
+      token_store_enabled = false
+    }
+  }
+}
+
+# Contoso directory: a third Function app in front of Microsoft Graph. It has no database, so its
+# identity only proves the API in the on-behalf-of exchange; the person's own Graph permissions apply.
+resource "azurerm_user_assigned_identity" "directory" {
+  name                = "id-${var.prefix}-directory-${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+}
+
+resource "azurerm_function_app_flex_consumption" "directory" {
+  name                = "func-${var.prefix}-dir-${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  service_plan_id     = azurerm_service_plan.directory.id
+
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "${azurerm_storage_account.sa.primary_blob_endpoint}${azurerm_storage_container.deploy_directory.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.sa.primary_access_key
+
+  runtime_name           = "python"
+  runtime_version        = "3.13"
+  maximum_instance_count = 40
+  instance_memory_in_mb  = 2048
+
+  site_config {
+    application_insights_connection_string = azurerm_application_insights.ai.connection_string
+  }
+
+  virtual_network_subnet_id     = try(local.net.function_subnet_id, null)
+  public_network_access_enabled = local.public_network_access
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.directory.id]
+  }
+
+  app_settings = merge(
+    {
+      TENANT_ID                  = local.tenant_id
+      API_CLIENT_ID              = azuread_application.api.client_id
+      MANAGED_IDENTITY_CLIENT_ID = azurerm_user_assigned_identity.directory.client_id
     },
     local.obo_uses_managed_identity ? {} : { API_CLIENT_SECRET = azuread_application_password.api_obo[0].value }
   )

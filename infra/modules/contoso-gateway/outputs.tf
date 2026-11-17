@@ -39,11 +39,21 @@ output "gateway_url" {
 }
 
 output "function_name" {
-  value = azurerm_function_app_flex_consumption.func.name
+  description = "The finance Function app."
+  value       = azurerm_function_app_flex_consumption.func.name
 }
 
 output "function_url" {
-  value = "https://${azurerm_function_app_flex_consumption.func.default_hostname}/api"
+  description = "The finance Function app's URL."
+  value       = "https://${azurerm_function_app_flex_consumption.func.default_hostname}/api"
+}
+
+output "directory_function_name" {
+  value = azurerm_function_app_flex_consumption.directory.name
+}
+
+output "directory_function_url" {
+  value = "https://${azurerm_function_app_flex_consumption.directory.default_hostname}/api"
 }
 
 output "function_identity_name" {
