@@ -2,7 +2,7 @@
 
 For AI coding agents setting up, running or changing this project. People should read
 [README.md](README.md) and [docs/](docs/) instead; this file is terse on purpose and records what was
-learnt the hard way. Everything below was observed in one tenant (2026-11-09 to 11-13) unless it says
+learnt the hard way. Everything below was observed in one tenant (2026-11-09 to 11-17) unless it says
 otherwise. Where a claim wasn't verified it's marked **(unverified)**.
 
 ## What this is
@@ -73,7 +73,7 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 - First apply: `-parallelism=1`. Concurrent MCP tool writes return 412 Precondition Failed.
 - Updating an `azapi_resource` MCP server, even only its description, **deletes its tools** while state
   still lists them. The server has `ignore_changes = [body]`. To change one, taint it.
-- `terraform plan` always shows four cosmetic changes (two MCP policies, the API policy, Entra
+- `terraform plan` always shows a few cosmetic changes (the MCP and API policies, Entra
   diagnostics). Expect them.
 - `terraform fmt` also reformats `terraform.tfvars`, so exact-string edits to it fail. Use a regex.
 - **Never chain `plan` and `apply` in one command** in an agent: the permission layer blocks it as a
@@ -120,8 +120,8 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 
 - **Prefer the Microsoft Copilot harness** (Home → **Agent**; formerly called the GitHub Copilot
   harness, and the portal may still say either). Gateway / connector / Terraform steps match Standard; editor and billing differ.
-  Needs Sandbox + pay-as-you-go or Preview says `EnforcementUsageCredits`. **Contoso Finance
-  Assistant** is Standard — do not default to it unless asked.
+  Needs Sandbox + pay-as-you-go or Preview says `EnforcementUsageCredits`. The Finance
+  Assistant of the earlier secure-profile build was Standard; don't default to Standard unless asked.
 - **Save is required** on the Copilot harness: naming on `/agents/new` alone does not persist; Save
   (Ctrl+S) until the URL has a bot id. Agent and environment IDs die with the environment, so never
   reuse IDs from an earlier build.
@@ -220,8 +220,9 @@ from that review and were not re-opened; check one before relying on it.
   number of servers per agent small.
 - **Confirmation for writes.** Microsoft 365 Copilot and Cowork honour the MCP `readOnlyHint` and
   `destructiveHint` annotations. Copilot Studio's documentation doesn't promise an equivalent. Don't
-  assume annotations produce a confirmation dialog until probe 9 in
-  [docs/ai-safety.md](docs/ai-safety.md#probes) is run on each harness.
+  assume annotations produce a confirmation dialog: probe 9 in [docs/ai-safety.md](docs/ai-safety.md#probes)
+  found a per-server "Ask the end user before running" setting on the standard harness and none on the
+  Microsoft Copilot harness.
 
 **Entra ID and connectors**
 
@@ -245,8 +246,8 @@ from that review and were not re-opened; check one before relying on it.
 **Billing and environments**
 
 - **Unmanaged Developer environments are being deprecated** (Microsoft gives 2026-12-15). Pay-as-you-go
-  already supports only Production and Sandbox. The module still defaults `environment_type` to
-  Developer: check the date and change the default if it holds.
+  already supports only Production and Sandbox. The module and both profiles default `environment_type`
+  to Sandbox, so new builds aren't affected.
 - The Microsoft Copilot harness is billed in Copilot Credits **from build and preview**; the standard
   harness often only after publishing.
 - Azure budgets and alerts **don't stop** pay-as-you-go usage. Use the agent's **Stop usage** limit, and
@@ -398,7 +399,7 @@ an agent on top of it:
   `az rest` against `https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v2/policies?api-version=2016-11-01`
   (resource `https://api.bap.microsoft.com/`). No API shows enforcement directly; replaying the connector
   call from the CLI fails ("missing connection ACL"), because the connection belongs to the browser session.
-- **`permissive_data_policy`** (rapid profile, default false) classifies unlisted connectors as Business
+- **`permissive_data_policy`** (default false) classifies unlisted connectors as Business
   instead of Blocked. The provider's group names differ: the policy default uses `Confidential` for Business,
   the custom-connector patterns use `Business`. Use it only in short-lived test environments.
 - **Chat context in Teams** persists across days; there is no "new chat" button (type *Restart* or *Start
@@ -472,3 +473,28 @@ and chats with the published agent; the agent called both tools through the gate
   attempt). It needs republishing after you add its tool, and the editor warns "unsaved changes" until you do.
 - **Wizard and connector gotchas** for a second agent are in the section above (409 on a reused name, derived
   subject, popup blocked when an automated click presses Create).
+
+## Approvals, second user and auditing (2026-11-17)
+
+- **Workflow connector catalogue.** The workflow designer's Connector action lists public connectors only; the
+  custom MCP connectors are not offered, so a workflow can't call an MCP tool. Connector actions in a workflow
+  started by "When an agent calls the flow" run as the **invoking user** (Learn), so a gateway can't tell that
+  workflow from any other flow. A write gate built on a workflow was discussed, not built.
+- **Workflow editor** drops characters typed fast into dynamic fields: type short chunks, and insert tokens with `/`
+  then Down and Enter. Ctrl+S saves. A published agent flow or workflow isn't needed to test the draft.
+- **Standard harness agent**, to test "Ask the end user before running": Home → Other ways to build → Agent
+  (Standard). The setting is under the MCP server tool's Additional details and **needs a message**; without one the
+  call fails closed with `InvalidContent`. Save the tool page, then test in the Test your agent pane.
+- **Second user.** `scripts/smoke.py` and `call-tool.py` take `CONTOSO_MSAL_CACHE` (a separate token cache file) and
+  `CONTOSO_LOGIN_AS` (a login hint) so a second account doesn't overwrite the first's sign-in. A new member account
+  needs Entra group membership (Terraform) and its own Dataverse user (it is in the environment users group).
+- **Dataverse auditing** can be switched on for the environment, but the agent tables can't be audited. The Azure CLI
+  guest identity is an unlicensed Dataverse administrator: it can read the organisation and audit settings but not
+  `bot` or `botcomponent`, and `PublishAllXml` returns 403. Use the portal as the work account.
+- **Three backends, one Function app each** (directory, finance, budgeting): `scripts/deploy-function.sh` deploys all
+  three; the directory app has no database. Replacing an APIM API (here `internal-systems` was split into `directory`
+  and `finance`) fails with "API cannot be deleted since it is referenced by at least one MCP tool", because the
+  tools' old `operationId` still points at it. Apply the tool updates first
+  (`terraform apply -target=module.gateway.azapi_resource.mcp_tool`, `-parallelism=1`), then a plain apply.
+- **A new profile output is only visible after an apply** (`directory_function_name` was missing until then). Add new
+  variables and outputs to both profiles; `scripts/check-profiles.sh` fails if their `variables.tf` or `outputs.tf` differ.

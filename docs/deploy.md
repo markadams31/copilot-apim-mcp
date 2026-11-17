@@ -55,8 +55,9 @@ The gateway, the connector and the tools are the same for both.
 
 **An environment with no credits can't run a Microsoft Copilot harness agent.** The Preview tab answers "You
 need credits to continue … This environment is out of credits" (`EnforcementUsageCredits`). A trial
-environment has none. Event and scheduled triggers consume credits. They were tested only on the Standard
-harness; unattended runs on the Microsoft Copilot harness have not been tested.
+environment has none. Event and scheduled triggers consume credits. A scheduled trigger was tested on the
+standard harness, and a workflow with a Recurrence trigger on the Microsoft Copilot harness, each once
+and as the maker ([going-further.md](going-further.md#agents-that-run-without-a-user)).
 
 Ways to get credits (an administrator allocates them to the environment):
 
@@ -130,7 +131,7 @@ The rapid profile needs none of this; instead, put your public IP address in
 | **Two delegated subnets, one in each region of the Power Platform geography**, the **same size** | Australia: australiaeast and australiasoutheast. Size: 6–10 IP addresses per non-production environment, 25–30 per production environment, plus 5 reserved. You can't resize after delegation without unlinking |
 | Both delegated subnets can **reach** API Management (peering) and **resolve** its name | Link API Management's private DNS zone to both virtual networks |
 | Network security group on the API Management subnet admits the delegated subnets on 443 | |
-| Explicit egress (NAT gateway or firewall) | New virtual networks have no default outbound internet access; API Management and the backend need Entra ID and Graph |
+| Explicit egress (NAT gateway or firewall) | New virtual networks have no default outbound internet access; API Management and the backends need Entra ID and Graph |
 
 ### 6. Identity configuration
 
@@ -140,7 +141,7 @@ All created by Terraform:
   (Graph `User.Read`, Azure SQL `user_impersonation`).
 - One app registration per agent, pre-authorised for `Tools.Read`.
 - The app role `CostCentres.Read` on the API app, assigned to the maker (`cost_centres_user_upns`), and a
-  user-assigned managed identity for the backend API, trusted by the API app as its credential.
+  user-assigned managed identity for each backend (directory, finance, budgeting), trusted by the API app as its credential.
 - The security group **Contoso Finance Readers**, holding the maker by default (`finance_reader_upns`).
   `sql-setup.py` gives the group a database user, so its members can query spending.
 
@@ -187,19 +188,19 @@ All in one resource group, `rg-<prefix>-agent-gateway`.
 | Object | Purpose | Created by | Profile |
 |---|---|---|---|
 | **API Management** `apim-<prefix>-<suffix>` | The gateway: validates the token, enforces each agent's allow-list, serves the MCP servers | Terraform | Both. Basic v2, public (rapid); Developer, internal (secure) |
-| Two **APIs** (`internal-systems`, `budgeting`), their **policies**, two **MCP servers** (`directory-mcp`, `finance-mcp`) and five **tool definitions** | The REST operations and the MCP tools over them | Terraform | Both |
+| Three **APIs** (`directory`, `finance`, `budgeting`), their **policies**, two **MCP servers** (`directory-mcp`, `finance-mcp`) and five **tool definitions** | The REST operations and the MCP tools over them | Terraform | Both |
 | API Management **logger** and **diagnostic** | Send gateway traces to Application Insights | Terraform | Both |
-| Two **Function apps** (`func-<prefix>-<suffix>`, `func-<prefix>-budg-<suffix>`) on two **Flex Consumption plans** (FC1) | The finance and budgeting backends | Terraform; code deployed by `scripts/deploy-function.sh` | Both |
-| **Storage account** `st<prefix><suffix>`, containers `deploy` and `deploy-budgeting` | Hold the Function packages | Terraform | Both |
-| Two **user-assigned managed identities** (`id-<prefix>-func-…`, `id-<prefix>-budgeting-…`) | The backends' credential for the on-behalf-of exchange and for SQL | Terraform | Both |
+| Three **Function apps** (`func-<prefix>-dir-<suffix>`, `func-<prefix>-<suffix>` for finance, `func-<prefix>-budg-<suffix>`) on three **Flex Consumption plans** (FC1) | The directory, finance and budgeting backends | Terraform; code deployed by `scripts/deploy-function.sh` | Both |
+| **Storage account** `st<prefix><suffix>`, containers `deploy`, `deploy-budgeting` and `deploy-directory` | Hold the Function packages | Terraform | Both |
+| Three **user-assigned managed identities** (`id-<prefix>-directory-…`, `id-<prefix>-func-…`, `id-<prefix>-budgeting-…`) | The backends' credential for the on-behalf-of exchange, and for SQL (finance and budgeting) | Terraform | Both |
 | **SQL server** `sql-<prefix>-<suffix>`, databases `finance` and `budgeting` (Basic), firewall rules | The demo data. Seeded by `scripts/sql-setup.py` | Terraform; data by script | Both. Client firewall rules apply to rapid |
 | **Log Analytics workspace** and **Application Insights** | Gateway, Function and Entra logs | Terraform | Both |
 | API Management **diagnostic setting** | Gateway logs to Log Analytics | Terraform | Both |
 | **Action group** `<prefix>-alerts` | Emails alerts (only when `alert_email` is set) | Terraform | Both |
 | Two **alert rules** (`authz-denial-spike`, `backend-errors`) | Alert on 401/403 spikes and backend 5xx | Terraform | Both |
 | **Virtual networks** (primary and secondary region), subnets, **peerings**, **NSGs** | Private network, plus the two delegated subnets Power Platform needs | Terraform | Secure |
-| **NAT gateway** and public IP | Outbound access for API Management and the backend | Terraform | Secure |
-| **Private DNS zones** (Private Link and API Management), links, A record, **private endpoint** | Name resolution and private access to the backend and gateway | Terraform | Secure |
+| **NAT gateway** and public IP | Outbound access for API Management and the backends | Terraform | Secure |
+| **Private DNS zones** (Private Link and API Management), links, A record, **private endpoint** | Name resolution and private access to the backends and gateway | Terraform | Secure |
 | **VPN gateway**, public IP, certificates (generated locally) | Lets a laptop reach the private gateway for testing | Terraform | Secure |
 | **DNS forwarder VM**, network interface | Resolves the private names for VPN clients | Terraform | Secure |
 | **Flow-log storage account** and **virtual network flow log** | Network audit trail | Terraform | Secure |
@@ -216,8 +217,8 @@ All in one resource group, `rg-<prefix>-agent-gateway`.
 |---|---|---|
 | **API app registration** `<prefix>-gateway-api`, its service principal, identifier URI, scope `Tools.Read`, app role `CostCentres.Read` | The resource the agents' tokens are issued for | Terraform |
 | **Admin-consented delegated grants** on the API app (Graph `User.Read`, Azure SQL `user_impersonation`) | Lets the backends act on the user's behalf | Terraform |
-| Two **federated identity credentials** (`function-managed-identity`, `budgeting-function-managed-identity`) | The Functions' managed identities as the API app's credential, so there's no secret | Terraform |
-| `obo-fallback` **client secret** | Only when `obo_credential` isn't `managed_identity` | Terraform |
+| Three **federated identity credentials** (`function-managed-identity` for finance, `budgeting-function-managed-identity`, `directory-function-managed-identity`) | The Functions' managed identities as the API app's credential, so there's no secret | Terraform |
+| `obo-fallback` **client secret** | Only if `obo_credential` is set to `secret`, which isn't recommended | Terraform |
 | One **app registration and service principal per agent** (`<prefix>-employee-assistant`, `<prefix>-finance-assistant`), pre-authorised for `Tools.Read` | The caller identity the gateway checks against each agent's allow-list | Terraform |
 | One **federated identity credential per MCP connector** (`copilot-<connector>`) | Trusts the connector's managed identity, so the connector holds no secret | Terraform, from the redirect URL and subject you copy out of the portals |
 | **Groups**: `<organisation> Finance Readers (<prefix>)`, `<organisation> Budget Editors (<prefix>)`, `<prefix>-agents-environment-users` | Who may read spending, edit forecasts and use the environment | Terraform |
@@ -275,7 +276,8 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
    apply. The secure profile takes 1 to 1.5 hours (mostly API Management); the rapid profile about 11
    minutes. Plan to a file, read it, then apply that file; never chain plan and apply in one command.
 3. **Backend, data, smoke.** Secure: `scripts/vpn.sh up` and open the deploy window first. Then
-   `scripts/deploy-function.sh <profile>`, `uv run scripts/sql-setup.py --profile <profile>`,
+   `scripts/deploy-function.sh <profile>` (all three backends), `uv run scripts/sql-setup.py --profile <profile>`,
+   `uv run scripts/sql-setup-budgeting.py --profile <profile>`, then
    `uv run scripts/smoke.py --profile <profile>` with `allow_test_sign_in=true`
    ([testing.md](testing.md)). Optional: `uv run scripts/mcp-client-once.py` proves MCP before Copilot
    Studio.

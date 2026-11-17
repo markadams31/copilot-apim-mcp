@@ -36,7 +36,7 @@ The agents' environment has an allow-list, not a block-list:
 
 | Group | What is in it | Effect |
 |---|---|---|
-| Business | Custom connectors whose host is this gateway; the Microsoft Teams channel; Application Insights in Copilot Studio | Allowed, and may be used together |
+| Business | Custom connectors whose host is this gateway; the Microsoft Teams channel; Application Insights in Copilot Studio; plus the connectors that the optional `allow_*` and `permissive_data_policy` variables add for tests (all off by default) | Allowed, and may be used together |
 | Non-business | The connectors Microsoft doesn't allow to be blocked | Can't be combined with Business connectors in one agent |
 | Blocked (the default) | Everything else, including other custom connectors, third-party MCP servers, public-website knowledge, unauthenticated chat, and connectors Microsoft adds later | Refused |
 
@@ -45,7 +45,7 @@ The agents' environment has an allow-list, not a block-list:
 
 ![The Add knowledge dialog with public websites, SharePoint and OneDrive for Business marked as blocked by the organisation's policy.](images/governance/dlp-knowledge-blocked.png)
 
-Three behaviours found by testing:
+Four behaviours found by testing:
 
 - **The policy must name a connector by its full ID** (`/providers/Microsoft.PowerApps/apis/shared_...`).
   With the bare name, the policy appears to work but connections to that connector stay blocked.
@@ -82,7 +82,7 @@ sharing limits:
 | **Move data across regions: off** | Environment setting | Generative AI runs on in-region model capacity; features with no in-region capacity are switched off, not sent abroad |
 | **Bing search: off** | Environment setting | No web grounding |
 | The data policy blocks public-website knowledge | [governance.tf](../infra/modules/contoso-gateway/governance.tf) | A maker can't bring web grounding back for one agent |
-| Azure resources in Australia East and Australia Southeast | Terraform | API Management, the backend API, Azure SQL and logs stay in Australia |
+| Azure resources in Australia East and Australia Southeast | Terraform | API Management, the backends, Azure SQL and logs stay in Australia |
 
 **What a maker sees:** some authoring assistance in Copilot Studio shows *"Feature blocked by your
 environment"*. That is this setting refusing to send data outside Australia. The agents' answers and
@@ -102,7 +102,7 @@ Know how fast each lever works before you need it. Timings marked ✅ were measu
 | Lever | Effect | Speed |
 |---|---|---|
 | Remove the agent from `agent_definitions`, or a tool from its server, and apply | The gateway refuses it; the tool disappears from the agent's list | About 95 seconds to apply, then immediate ✅ |
-| Remove the source system's grant (here, the database user for a group or for the backend API's identity) | The system refuses the next call | Immediate ✅ |
+| Remove the source system's grant (here, the database user for a group or for the finance backend's identity) | The system refuses the next call | Immediate ✅ |
 | Remove a user's app role | A token issued before the removal keeps working until it refreshes; a fresh token is refused | Up to the token's lifetime ✅ |
 | Remove a user from the group a system trusts | Takes effect when the user's token is next issued | At next sign-in 🔲 |
 | Block the connector in the data policy | The agent can't use it | Minutes 🔲 |
@@ -125,7 +125,7 @@ general knowledge, with no error ([ai-safety.md](ai-safety.md#silent-failure)).
 | **Connect** | The maker creates the MCP connector; the platform team trusts it by adding its federated identity credential in Terraform ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md)). An untrusted connector can't sign anyone in | ✅ |
 | **Publish** | Needs at least one channel; only Microsoft Teams and Microsoft 365 is allowed by the data policy. On a trial tenant it also needs a Sandbox or Production environment with a billing plan | ✅ Published, with a scheduled trigger (standard harness) |
 | **Run** | Every tool call passes the gateway: allow-list, role, parameters, rate limit, audit trace | ✅ |
-| **Change** | A Terraform plan for the server and agent maps; the smoke test afterwards | ✅ Mechanism. ⏳ No approval workflow |
+| **Change** | A Terraform plan for the server and agent maps; the smoke test afterwards | ✅ Mechanism. ⏳ No approval process for changes to the maps |
 | **Promote** (development to test to production) | A connector exported to another environment gets a **new managed identity**, so each environment needs its own federated identity credential | ⏳ One environment only |
 | **Retire** | Remove the agent from `agent_definitions`; delete it in Copilot Studio | 🔲 |
 
@@ -150,11 +150,11 @@ a security control, and monitor it.
 | **No approval workflow for the server and agent maps** ⏳ | The mechanism for a reviewed grant exists; the process around it doesn't. Who approves, and how an agent's owner in Copilot Studio maps to its client app's owner, aren't modelled | A pull-request rule naming the system's owner as a required reviewer |
 | **Maker-provided credentials aren't turned off** ⏳ | A maker could set a tool to run with their own sign-in for every user, so users would see what the maker can see | The environment setting "Control maker-provided credentials" (Power Platform admin center; not available in the Terraform provider used here) |
 | **"Assignment required" isn't set** ⏳ | Any user in the tenant can try an agent's client app | Turn it on for each agent's enterprise application and assign groups |
-| **Changes to agents aren't audited here** 🔲 | Who changed an agent's instructions or tools in Copilot Studio isn't captured by this deployment | Dataverse auditing for the environment, and Microsoft Purview audit. The Terraform identity isn't a Dataverse user, so the environment's owner must turn it on |
+| **Changes to agents aren't audited here** 🔲 | Who changed an agent's instructions or tools in Copilot Studio isn't captured by this deployment. Tested: Dataverse auditing turned on for the environment didn't record an agent edit, and the agent tables can't be audited ([testing.md](testing.md#evidence-gaps)) | Microsoft Purview audit, untested here |
 | **No agent inventory** 🔲 | No single list of agents, owners and identities | The Power Platform admin center and the Microsoft 365 admin center's agent registry; not examined here |
 | **Agents aren't kept as code** ⏳ | Agents are built by hand in the portal, so a change to one isn't reviewable | The Copilot Studio extension for Visual Studio Code, solutions and pipelines; not tried |
 | **Retention isn't decided** ⏳ | How long logs and transcripts are kept, and who can read them, decides what can be shown to an auditor. No mapping to a framework such as the Essential Eight or IRAP | A retention decision for the workspace and for Dataverse transcripts |
-| **Per-user isolation is shown with one user** 🔲 | Every test used a single user account | A second, unrelated user ([testing.md](testing.md#evidence-gaps)) |
+| **Per-user isolation is shown at the gateway only** 🔲 | A second user was tested through the scripts, not through a Copilot Studio chat | Publish and share the agent with a second user ([testing.md](testing.md#evidence-gaps)) |
 
 ## Learn more
 

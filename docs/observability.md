@@ -20,10 +20,10 @@ by the gateway, so neither the agent nor the model can alter or omit it.
 | **API Management (authorisation)** | One trace per tool call: **agent** (`azp`), **user** (`oid`), operation, **allowed or denied** | Application Insights `traces` | API policy `<trace>` ([api-policy.xml.tftpl](../infra/modules/contoso-gateway/policies/api-policy.xml.tftpl)) |
 | **API Management (gateway)** | Every request with status, backend status, timings and **caller IP** | `ApiManagementGatewayLogs` | [observability.tf](../infra/modules/contoso-gateway/observability.tf) |
 | **API Management (MCP)** | One row per MCP message: server, method, tool, client name (on `initialize`), transport, protocol version | `ApiManagementGatewayMCPLog` | Same diagnostic setting (`allLogs`) |
-| **Backend** | Requests and failures of the backend API | Application Insights `requests`, `exceptions` | Function app settings |
+| **Backends** | Requests and failures of the three backend APIs | Application Insights `requests`, `exceptions` | Function app settings |
 | **Network** (secure profile) | Allowed and denied flows per subnet, including attempts to reach private endpoints | `NTANetAnalytics` (Traffic Analytics) | Virtual network flow logs |
 | **Microsoft Entra ID** | Sign-ins (users, OBO exchanges, connectors' managed identities), app and consent changes, **every Microsoft Graph call with its source IP** | `SigninLogs`, `AADNonInteractiveUserSignInLogs`, `AADManagedIdentitySignInLogs`, `AuditLogs`, `MicrosoftGraphActivityLogs` | Tenant diagnostic setting |
-| **Power Platform** | Changes to agents and connectors (Dataverse audit), maker and admin activity | Dataverse audit, Microsoft Purview audit | Power Platform admin center → environment → Settings → Audit (the environment owner: Terraform's identity isn't a Dataverse user there); Purview |
+| **Power Platform** | Maker and admin activity. Changes to agents are **not** captured by Dataverse audit: the agent tables can't be audited ([testing.md](testing.md#evidence-gaps)) | Dataverse audit (environment level), Microsoft Purview audit (untested here) | Power Platform admin center → environment → Settings → Audit (the environment owner: Terraform's identity isn't a Dataverse user there); Purview |
 
 ### What is recorded, and what is not
 
@@ -114,7 +114,7 @@ ApiManagementGatewayLogs
 | summarize throttled = count() by ApiId, bin(TimeGenerated, 5m)
 ```
 
-Throttled MCP tool calls show here under the REST API (`internal-systems`), not the MCP server: the MCP
+Throttled MCP tool calls show here under the REST API (`directory`, `finance` or `budgeting`), not the MCP server: the MCP
 server calls the API internally, and the rate limit is in the API's policy. Gateway logs arrive
 5–15 minutes after the call.
 
@@ -164,7 +164,7 @@ The tables were populated within an hour of the calls on the rapid profile. An e
 them, and the cause was not found ([what is not observed](#what-is-not-observed)).
 
 ```kusto
-// Which users the backend API acted for, and against which downstream resource
+// Which users the backends acted for, and against which downstream resource
 AADNonInteractiveUserSignInLogs
 | where AppId == "<api_client_id>"
 | summarize count() by UserPrincipalName, ResourceDisplayName, ResultType
@@ -182,12 +182,12 @@ subnet is a bypass attempt (or a deliberate deploy window):
 
 ```kusto
 NTANetAnalytics
-| where FlowStatus == "Allowed" and DestIp in ("<function endpoint IP>", "<SQL endpoint IP>")
+| where FlowStatus == "Allowed" and DestIp in ("<directory endpoint IP>", "<finance endpoint IP>", "<budgeting endpoint IP>", "<SQL endpoint IP>")
 | where not(SrcIp startswith "10.40.1.")      // API Management's subnet
 | summarize flows = count(), earliest = min(TimeGenerated) by SrcIp, DestIp, DestPort
 ```
 
-Tested: calls from a VPN client straight to the backend API (443) and SQL (1433) private endpoints
+Tested: calls from a VPN client straight to a backend (443) and SQL (1433) private endpoint
 **time out**, so the block works ([smoke test check 8](testing.md#3-smoke-test)), and these queries find
 the attempts. **The surprise:** the log shows them as **Allowed**, from the VPN client's side, and
 records **no denied flow** at the private endpoint. Don't build an alert on `FlowStatus == "Denied"`
@@ -211,7 +211,7 @@ ApiManagementGatewayLogs
 ### App-only tool: role denials and the managed identity ✅
 
 A user without the app role is refused by the gateway with a 403 that is **not** in the authorisation
-trace. Find it in the gateway log, and see the backend API's identity sign in to Azure SQL:
+trace. Find it in the gateway log, and see the finance backend's identity sign in to Azure SQL:
 
 ```kusto
 ApiManagementGatewayLogs
@@ -269,7 +269,7 @@ action group that emails that address; without it **nobody is notified**.
 | **Tool names and arguments aren't in Copilot Studio's telemetry** | Deliberate: they would be in the sensitive properties, which are off. Correlate with the gateway's trace on the user's object ID and time |
 | **A role denial and a rejected parameter aren't in the audit trace** | They are separate policy steps. Find them in the gateway log (queries above) |
 | **Nothing alerts on a failed or absent tool call** | The failure most likely to mislead a user leaves no row at the gateway ([ai-safety.md](ai-safety.md#silent-failure)) |
-| **Changes to agents** | Dataverse auditing isn't turned on ([governance.md](governance.md#known-governance-gaps)) |
+| **Changes to agents** | Dataverse auditing doesn't cover the agent tables, so an edit leaves no audit record there. Purview is untested ([governance.md](governance.md#known-governance-gaps)) |
 | **A blocked bypass attempt shows as Allowed** | Flow logs record it from the source side; alert on the source, not on a denied flow |
 
 ## Learn more

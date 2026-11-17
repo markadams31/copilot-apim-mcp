@@ -191,8 +191,8 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
    **Resources** section always shows an error: API Management MCP servers expose tools, not MCP
    resources.
 
-   The Finance Assistant lists `directory_get_my_profile`, `finance_list_cost_centres`, `finance_query_spend`, `budgeting_get_forecast` and
-   `budgeting_update_cost_centre_forecast`; the Employee Assistant lists
+   The Finance Assistant lists `directory_get_my_profile`, `finance_list_cost_centres`, `finance_query_spend`,
+   `budgeting_get_forecast` and `budgeting_update_cost_centre_forecast`; the Employee Assistant lists
    `directory_get_my_profile` only.
 
    The two screenshots below show earlier tool names (`hello`, `whoami`, `sqlwhoami`); the screens and

@@ -583,7 +583,7 @@ def solution_architecture():
         900,
         "Copilot Studio agents using internal REST APIs as MCP tools through API Management",
         "Solution architecture",
-        NEWER,
+        "2026-11-17",
     )
 
     # Identity across the top: every hop is authorised by Microsoft Entra ID
@@ -630,7 +630,7 @@ def solution_architecture():
     )
     d.node(
         340,
-        395,
+        410,
         "copilot-studio",
         "Employee Assistant",
         "MCP connection:\nOAuth as the user",
@@ -665,7 +665,7 @@ def solution_architecture():
     )
     mcp_a = d.service(
         600,
-        385,
+        410,
         180,
         72,
         "Directory MCP server",
@@ -673,9 +673,9 @@ def solution_architecture():
     )
     mcp_b = d.service(
         600,
-        510,
+        540,
         180,
-        168,
+        150,
         "Finance MCP server",
         "Finance Assistant only\ntools:\nfinance_list_cost_centres,\nfinance_query_spend,\nbudgeting_get_forecast,\nbudgeting_update_…",
     )
@@ -683,9 +683,9 @@ def solution_architecture():
         790,
         470,
         150,
-        150,
+        190,
         "REST APIs",
-        "finance +\nbudgeting\nimports\n\nValidate token\nAllow-list\nForward token",
+        "directory +\nfinance +\nbudgeting\nimports\n\nValidate token\nAllow-list\nForward token",
     )
     d.group(
         910,
@@ -696,30 +696,37 @@ def solution_architecture():
         "plain",
         sublabel="Private endpoints only",
     )
+    fn_dir = d.node(
+        1040,
+        370,
+        "function",
+        "Directory API",
+        "Graph: OBO",
+    )
     fn = d.node(
         1040,
-        410,
+        470,
         "function",
-        "Directory + finance API",
-        "Spend and directory: OBO\nCost centres: app-only",
+        "Finance API",
+        "Spend: OBO\nCost centres: app-only",
     )
     fn2 = d.node(
         1040,
-        550,
+        565,
         "function",
         "Budgeting API",
-        "Forecast read and update\n(the only write), OBO",
+        "Forecast read; the only\nwrite, OBO",
     )
     sql = d.node(
         1195,
-        430,
+        470,
         "sql",
         "Finance database",
         "Spend as the user;\ncost centres as the API",
     )
     sql2 = d.node(
         1195,
-        570,
+        565,
         "sql",
         "Budgeting database",
         "Budget Editors only;\nrecords the writer",
@@ -762,7 +769,7 @@ def solution_architecture():
     d.arrow([users.right, (140, 430)], num=1, num_at=(118, 430))
     # 2 The agent's connection gets a user token for the API
     d.arrow(
-        [(340, 208), (340, 373)], color=PURPLE, dash="6 3", num=2, num_at=(340, 232)
+        [(340, 208), (340, 388)], color=PURPLE, dash="6 3", num=2, num_at=(340, 232)
     )
     d._label(
         330,
@@ -772,22 +779,23 @@ def solution_architecture():
         "end",
     )
     # 3 The agent calls its own MCP server
-    d.arrow([(362, 395), (450, 395), (450, 385), mcp_a.left], num=3, num_at=(470, 385))
-    d.arrow([(362, 555), mcp_b.left])
-    d.arrow([(362, 535), (420, 535), (420, 405), (510, 405)])
+    d.arrow([(362, 410), mcp_a.left], num=3, num_at=(470, 410))
+    d.arrow([(362, 555), (510, 555)])
+    d.arrow([(362, 535), (420, 535), (420, 432), (510, 432)])
     # 4 APIM maps the tool to a REST operation, authorises it, forwards it privately
-    d.arrow([mcp_a.right, (700, 385), (700, 430), rest.left[0:1] + (430,)])
-    d.arrow([mcp_b.right, (700, 555), (700, 510), (715, 510)])
-    d.arrow([rest.right, (890, 470), (890, 410), fn.left], num=4, num_at=(890, 470))
-    d.arrow([(890, 470), (890, 550), fn2.left])
+    d.arrow([mcp_a.right, (715, 410)])
+    d.arrow([mcp_b.right, (715, 540)])
+    d.arrow([rest.right, (890, 470), (890, 370), fn_dir.left], num=4, num_at=(890, 470))
+    d.arrow([(890, 470), fn.left])
+    d.arrow([(890, 470), (890, 565), fn2.left])
     # 5 The API exchanges the token on-behalf-of the user, then reads data as the user
     d.arrow(
-        [(1040, 388), (1040, 208)], color=PURPLE, dash="6 3", num=5, num_at=(1040, 270)
+        [(1040, 348), (1040, 208)], color=PURPLE, dash="6 3", num=5, num_at=(1040, 270)
     )
-    d._label(1048, 352, "On-behalf-of\nexchange", PURPLE)
-    d.arrow([(1062, 410), (1150, 410), (1150, 430), sql.left])
-    d.arrow([(1150, 410), (1150, 300), graph.left])
-    d.arrow([fn2.right, (1150, 550), (1150, 570), sql2.left])
+    d._label(1048, 322, "On-behalf-of\nexchange", PURPLE)
+    d.arrow([fn_dir.right, (1150, 370), (1150, 300), graph.left])
+    d.arrow([fn.right, sql.left])
+    d.arrow([fn2.right, sql2.left])
     d._label(1335, 350, "As the user, through\ncontrolled egress", BLUE)
     # 6 Every layer reports to one workspace
     for x in (295, 690, 1040):
@@ -813,9 +821,9 @@ def two_front_doors():
     d = Diagram(
         1500,
         800,
-        "One REST API, two front doors: why authorisation belongs on the API",
+        "Each REST API, two front doors: why authorisation belongs on the API",
         "Each refused path is a smoke-test check (3, 7 and 8)",
-        NEWER,
+        "2026-11-17",
     )
     agent = d.node(
         120,
@@ -840,7 +848,7 @@ def two_front_doors():
         "Azure API Management",
         "plain",
         "apim",
-        "The REST API is imported once and exposed twice",
+        "Each REST API is imported once and exposed twice",
     )
     d.group(
         320,
@@ -874,7 +882,7 @@ def two_front_doors():
         520,
         "Front door 2: REST API",
         "cloud",
-        sublabel="/tools/* (imported from OpenAPI)",
+        sublabel="/directory/*, /finance/* (imported from OpenAPI)",
     )
     pol = d.service(
         810,
@@ -890,7 +898,7 @@ def two_front_doors():
             (440, "/directory/me", "directory_get_my_profile"),
             (500, "/finance/cost-centres", "finance_list_cost_centres"),
             (560, "/finance/spend", "finance_query_spend"),
-            (620, "/diagnostics/caller", "none (smoke test only)"),
+            (620, "/finance/diagnostics/caller", "none (smoke test only)"),
         )
     ]
 
@@ -943,7 +951,7 @@ def two_front_doors():
         num_at=(400, 520),
     )
     d.refused(650, 370, "403: finance_query_spend isn't on its list", "start")
-    d._label(170, 546, "GET /tools/finance/spend?... with its token", RED)
+    d._label(170, 546, "GET /finance/spend?... with its token", RED)
 
     # Refused 3: skipping API Management altogether
     d.arrow(
@@ -957,7 +965,7 @@ def two_front_doors():
     d._label(
         600,
         734,
-        "GET https://<backend>/api/finance/spend?... with its token",
+        "GET https://<finance backend>/api/spend?... with its token",
         RED,
         "middle",
     )
@@ -981,7 +989,7 @@ def agent_tool_access():
         1020,
         "Domain MCP servers, shared across agents",
         "Four questions, answered at four layers (finance + budgeting behind one gateway)",
-        NEWER,
+        "2026-11-17",
     )
     heads = [
         (120, "Which agent?", "Its own client app, accepted\nby the servers it uses"),
@@ -1034,7 +1042,7 @@ def agent_tool_access():
         500,
         "Contoso REST APIs",
         "cloud",
-        sublabel="finance + budgeting imports",
+        sublabel="directory, finance and budgeting imports",
     )
     op_dir = d.service(
         855, 280, 300, 44, "GET /directory/me", "on the directory server: both agents"
@@ -1264,7 +1272,7 @@ def auth_tool_call():
             dict(
                 frm=1, to=1, text="Rate limit per agent and user; write the audit trace"
             ),
-            dict(frm=1, to=2, text="GET /tools/finance/spend?..., token forwarded"),
+            dict(frm=1, to=2, text="GET /finance/spend?..., token forwarded"),
             dict(
                 frm=2,
                 to=1,
@@ -1296,7 +1304,7 @@ def auth_obo():
                 frm=1,
                 to=2,
                 text="Exchange the user's token for a Graph or SQL token",
-                note="proves itself with a managed identity (a client secret is the fallback)",
+                note="proves itself with a managed identity, no client secret",
             ),
             dict(
                 frm=2,
@@ -1395,7 +1403,7 @@ def access_models():
             a3="a token for the user,\nfrom Microsoft Entra ID",
             decides=[
                 "Decides: which agent\nmay use which tool",
-                "Proves itself to Entra ID with a\nmanaged identity (a secret is\nthe fallback)",
+                "Proves itself to Entra ID with a\nmanaged identity: no secret",
                 "Decides: from the user's\nown permissions",
             ],
             use="Use when people already have access to the data and should never see more than that. Here: the directory profile and spending.",
@@ -1423,122 +1431,6 @@ def access_models():
         ),
     )
     d.save("access-models")
-
-
-def access_matrix():
-    d = Diagram(
-        1300,
-        720,
-        "Access model and credential are separate choices",
-        "A managed identity changes how the backend proves who it is, not whose permissions apply",
-        NEW,
-    )
-    cx = [540, 980]
-    for x, h, sub in zip(
-        cx,
-        ["Client secret", "Managed identity"],
-        [
-            "A password to store and rotate",
-            "No secret: trusted through a federated credential",
-        ],
-    ):
-        d._text(x, 112, h, 15, BLUE, "600", "middle")
-        d._text(x, 132, sub, 11.5, MUTED, anchor="middle")
-    rows = [
-        (
-            150,
-            "Delegated access",
-            "The backend acts as\nthe signed-in user",
-            "Source system\nsees the user",
-        ),
-        (
-            400,
-            "App-only access",
-            "The backend acts as\nthe application",
-            "Source system\nsees the app",
-        ),
-    ]
-    for y, h, sub, sees in rows:
-        d._text(30, y + 34, h, 15, INK, "600")
-        d._text(30, y + 56, sub, 12, MUTED)
-        d._text(30, y + 100, sees, 12, INK, "600")
-
-    def cell(x, y, label, icon, body, chip, chip_color, chip_w):
-        d.group(x, y, 420, 215, label, "plain", icon)
-        for i, line in enumerate(body):
-            d._text(x + 16, y + 66 + i * 19, line, 12.5, INK)
-        d.chip(x + 16 + chip_w / 2, y + 185, chip, chip_w, chip_color)
-
-    cell(
-        330,
-        150,
-        "Delegated, client secret",
-        None,
-        [
-            "On-behalf-of exchange.",
-            "The API presents a client secret to",
-            "Entra ID with the user's token.",
-            "Works, but the secret is a liability.",
-        ],
-        "built and tested",
-        BLUE,
-        150,
-    )
-    cell(
-        770,
-        150,
-        "Delegated, managed identity",
-        "managed-identity",
-        [
-            "The same exchange. The user-assigned",
-            "managed identity supplies the client",
-            "assertion in place of the secret.",
-            "The default here.",
-        ],
-        "built and tested",
-        GREEN,
-        150,
-    )
-    cell(
-        330,
-        400,
-        "App-only, client secret",
-        None,
-        [
-            "Client credentials flow with a secret.",
-            "A broad identity and a secret to rotate.",
-            "",
-            "Avoid: use a managed identity instead.",
-        ],
-        "avoid",
-        RED,
-        90,
-    )
-    cell(
-        770,
-        400,
-        "App-only, managed identity",
-        "managed-identity",
-        [
-            "The managed identity gets its own token",
-            "for the source system. No user token.",
-            "Needs a database user or app role for",
-            "that identity, scoped narrowly.",
-        ],
-        "for data users cannot reach; built and tested",
-        GREEN,
-        350,
-    )
-    d.group(24, 640, 1252, 56, "", "plain")
-    d._text(
-        44,
-        674,
-        "Pick the row by asking whose permissions should apply. Pick the column by asking how the backend should prove itself.",
-        13,
-        INK,
-        "600",
-    )
-    d.save("access-matrix")
 
 
 def auth_app_only():
@@ -1574,7 +1466,7 @@ def auth_app_only():
             dict(
                 frm=1,
                 to=2,
-                text="GET /tools/finance/cost-centres, token fwd",
+                text="GET /finance/cost-centres, token fwd",
                 note="Easy Auth checks it; not used downstream",
             ),
             dict(
@@ -1642,7 +1534,11 @@ def assurance_pillars():
             "Who called what,\nfor whom; denials\nand silent absence",
         ),
         (940, "AI safety", "Injection, silent\nfailure, write HITL;\nprobes 1–9"),
-        (1200, "Evaluations", "Tool choice,\nfaithfulness, honesty;\nEvaluate + scorecard"),
+        (
+            1200,
+            "Evaluations",
+            "Tool choice,\nfaithfulness, honesty;\nEvaluate + scorecard",
+        ),
     ]
     for x, title, body in pillars:
         d.group(x - 110, 170, 220, 260, title, "plain")
@@ -1924,6 +1820,5 @@ if __name__ == "__main__":
     auth_tool_call()
     auth_obo()
     access_models()
-    access_matrix()
     auth_app_only()
     connect_agent()

@@ -53,15 +53,15 @@ place:
   credentials.
 
 
-![Solution architecture: users chat with Contoso's agents in Copilot Studio; each agent's MCP connections sign the user in through Microsoft Entra ID and call the domain MCP servers the agent uses in API Management over a private network; API Management authorises the call and forwards it to the directory and finance API or the separate budgeting API, which read Microsoft Graph and their own databases as the user, or read reference data as themselves.](docs/diagrams/solution-architecture.svg)
+![Solution architecture: users chat with Contoso's agents in Copilot Studio; each agent's MCP connections sign the user in through Microsoft Entra ID and call the domain MCP servers the agent uses in API Management over a private network; API Management authorises the call and forwards it to the directory, finance or budgeting API, each a separate backend, which read Microsoft Graph and their own databases as the user, or read reference data as themselves.](docs/diagrams/solution-architecture.svg)
 
 The components and a step-by-step tool call are in [docs/architecture.md](docs/architecture.md).
 
 ## The demonstration
 
 The demonstration has three systems (the directory, finance and budgeting), two agents and five tools.
-Finance and budgeting have separate backends and databases, as in a fragmented estate. Each tool shows
-one thing the gateway does.
+Each system has its own backend, as in a fragmented estate: finance and budgeting have their own databases,
+and the directory is Microsoft Graph. Each tool shows one thing the gateway does.
 
 | Agent | For | MCP servers it uses |
 |---|---|---|
@@ -75,10 +75,10 @@ that read and write the separate budgeting system.
 | Tool | System | Access | What it shows |
 |---|---|---|---|
 | `directory_get_my_profile` | Directory (Microsoft Graph) | As the user (delegated access) | The agent acts as the user, with no secret anywhere |
-| `finance_list_cost_centres` | Finance database, cost-centre view | As the backend API (app-only access), behind an app role | Data users can't query directly; the gateway decides who may use it |
+| `finance_list_cost_centres` | Finance database, cost-centre view | As the finance backend (app-only access), behind an app role | Data users can't query directly; the gateway decides who may use it |
 | `finance_query_spend` | Finance database, spending view | As the user (delegated access) | A parameterised query: the model fills typed parameters, never SQL; the gateway validates them; the database decides who may see spending |
 | `budgeting_get_forecast` | Budgeting database (a separate system) | As the user (delegated access) | A second Contoso system behind the same gateway; only Budget Editors may read |
-| `budgeting_update_cost_centre_forecast` | Budgeting database | As the user (delegated write) | A write tool: typed parameters, and the database records who changed the forecast. There is no approval gate |
+| `budgeting_update_cost_centre_forecast` | Budgeting database | As the user (delegated write) | A write tool: typed parameters, and the database records who changed the forecast. There is no approval gate ([ai-safety.md](docs/ai-safety.md#human-oversight)) |
 
 A conversation with the Finance Assistant, and what each step demonstrates:
 
@@ -113,9 +113,9 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 | **Copilot Studio** | Power Platform's product for building agents (not the Microsoft 365 Copilot chat app) |
 | **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/): how an agent lists and calls tools |
 | **The gateway** | The Azure API Management instance |
-| **The backend API** | An API behind the gateway. Here, two Azure Functions apps standing in for Contoso's internal systems: one serves the directory and finance, the other budgeting |
+| **The backend API** | An API behind the gateway. Here, three Azure Functions apps standing in for Contoso's internal systems: directory (a thin layer over Microsoft Graph), finance and budgeting, each with its own identity |
 | **Delegated access** | The system sees the user, so the user's own permissions apply |
-| **App-only access** | The system sees the backend API's own identity; something else (here the gateway) must decide who may use the tool |
+| **App-only access** | The system sees the finance backend's own identity; something else (here the gateway) must decide who may use the tool |
 
 [docs/concepts.md](docs/concepts.md) explains these from the beginning.
 
@@ -124,10 +124,10 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 | Surface | Result |
 |---|---|
 | Scripted tests against a public gateway (the rapid profile) | Pass: per-agent tool lists and allow-lists, cross-agent refusal, both access models, no client secret anywhere, parameter validation, forged tokens, load and rate limit, the database refusing a user |
-| Scripted tests over the private network (the secure profile) | Pass, including the two bypass attempts: the REST API called directly, and the backend API called directly |
+| Scripted tests over the private network (the secure profile) | Pass, including the two bypass attempts: the REST API called directly, and the backend API called directly. Run before the directory moved to its own Function app, and not repeated since |
 | Real Copilot Studio agents (standard harness, an earlier build) over Power Platform Virtual Network support | Pass: both access models, connector authenticated by a managed identity, data policy enforcement, a published Standard harness agent with a scheduled trigger, fault injection, an alert email arriving |
 | Copilot Studio on the rapid (public) gateway, Microsoft Copilot harness | Pass: the Finance Assistant with two managed-identity connectors (directory and finance) used all five tools in Preview, including a forecast update with no approval step. Probes: identity spoofing, invalid parameters, prompt disclosure, injected instructions in a tool result and a stopped backend were all handled; "everything since 2020" was split into seven calls instead of refused. Evidence screenshots are kept in [docs/images/testing](docs/images/testing/) |
-| Not tested | A second user; an unattended Microsoft Copilot harness agent as anyone but the maker, or after its connection expires (one workflow-triggered run as the maker passed; the editor has no Triggers section, so a workflow starts it); Copilot Studio Evaluate, which would not load; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
+| Not tested | A second user in a Copilot Studio chat (checked at the gateway only); an unattended Microsoft Copilot harness agent as anyone but the maker, or after its connection expires (one workflow-triggered run as the maker passed; the editor has no Triggers section, so a workflow starts it); Copilot Studio Evaluate, which would not load; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
 
 **Who it's for:** platform, security, network and Power Platform teams, and architects, deciding
 whether and how to give Copilot Studio agents governed access to internal systems.
@@ -154,8 +154,8 @@ enterprise policy, delegated subnets), so a change is proven only on `secure`.
 
 You need a work account for makers, Copilot Studio, administrator rights and, for the secure profile,
 **E5-class licences** for Power Platform Virtual Network support
-([prerequisites](docs/deploy.md#prerequisites)). The secure profile costs about US$135 a month in
-Australia East, or US$275 with the VPN gateway ([breakdown](docs/architecture.md#cost-of-this-demonstration)).
+([prerequisites](docs/deploy.md#prerequisites)). The secure profile costs about US$150 a month in
+Australia East, or US$290 with the VPN gateway ([breakdown](docs/architecture.md#cost-of-this-demonstration)).
 
 ```bash
 export ARM_SUBSCRIPTION_ID=<subscription id>
@@ -174,8 +174,8 @@ the gateway only, so open a deployment window over the VPN first:
 terraform -chdir=$P apply -var allow_vpn_to_backends=true   # secure only
 scripts/vpn.sh setup && scripts/vpn.sh up                   # secure only
 
-scripts/deploy-function.sh $PROFILE                 # finance + budgeting Function apps
-uv run scripts/sql-setup.py --profile $PROFILE      # finance data, and access for the backend API and Finance Readers
+scripts/deploy-function.sh $PROFILE                 # directory, finance and budgeting Function apps
+uv run scripts/sql-setup.py --profile $PROFILE      # finance data, and access for the finance backend and Finance Readers
 uv run scripts/sql-setup-budgeting.py --profile $PROFILE  # budgeting data, and access for Budget Editors
 
 terraform -chdir=$P apply -var allow_test_sign_in=true      # test window: smoke.py signs in as the agents
@@ -203,7 +203,7 @@ If you already run API Management, three parts transfer. None has been tried on 
    managed identity with a federated identity credential and no secret.
 
 Four parts don't transfer: the lab network, the Developer tier, the VPN and DNS forwarder, and the demo
-backend.
+backends.
 
 ## Documentation
 

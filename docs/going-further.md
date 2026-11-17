@@ -41,7 +41,7 @@ Sources: [virtual network concepts for API Management](https://learn.microsoft.c
 | **What is in preview** | API Management's MCP support is configured through a preview management API version. Copilot Studio's environment-level telemetry is in preview | Called out where each is used |
 | **Connection reliability** | The Copilot Studio connection fell to "Reconnect" a few hours after being made, and the agent then answered without its tools | A fix ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md#troubleshooting)); the cause wasn't found |
 | **Retention and compliance** | How long logs and transcripts are kept, and who can read them, decides what can be shown to an auditor | Logs go to one workspace; flow logs keep 30 days. No mapping to a framework |
-| **Write tools** | One tool writes (`budgeting_update_cost_centre_forecast`), with no approval gate and no change history | Options for human approval are set out, not built ([ai-safety.md](ai-safety.md#human-oversight)) |
+| **Write tools** | One tool writes (`budgeting_update_cost_centre_forecast`), with no approval gate and no change history | The options for human approval are set out, and none is built ([ai-safety.md](ai-safety.md#human-oversight)) |
 | **Which harness** | Copilot Studio agents run on the standard harness or the Microsoft Copilot harness. This repository prefers the Microsoft Copilot harness once a Sandbox with pay-as-you-go is linked; both were tested | The gateway is the same for both; the maker experience, billing and available settings differ ([deploy.md](deploy.md#which-harness-and-copilot-credits)) |
 
 ## Assumptions worth challenging
@@ -54,7 +54,7 @@ Choices made because they were the simplest to prove. None has been tested again
 | **The connector carries the agent's client app** | A maker who attaches another agent's connector gets that agent's tools. Confirmed by test | Restrict who can use or share each connector, and cross-check against Copilot Studio telemetry |
 | **Each REST operation becomes one tool, unchanged** | Tool descriptions decide when the model calls a tool, and REST operations are rarely shaped for that | Design tools for the task, and describe them for the model |
 | **One tool per access model** | It shows the mechanism, not how it behaves across many systems | [architecture.md](architecture.md#access-models-delegated-and-app-only) |
-| **Single sign-on left off** | The connector asks each user to sign in once, which is where "Reconnect" bites | The connector's "Enable on-behalf-of login" setting (single sign-on; not the same thing as the backend API's on-behalf-of flow). Not tried |
+| **Single sign-on left off** | The connector asks each user to sign in once, which is where "Reconnect" bites | The connector's "Enable on-behalf-of login" setting (single sign-on; not the same thing as the backends' on-behalf-of flow). Not tried |
 | **Terraform is the control plane for grants** | It suits a platform team more than maker self-service | A request process in front of it |
 
 ## If you copy `infra/` into a shared subscription or tenant
@@ -73,7 +73,7 @@ Choices made because they were the simplest to prove. None has been tested again
 
 ## Limits of this proof of concept
 
-- **A few APIs.** Finance (`internal-systems`) and budgeting are separate APIM APIs with
+- **A few APIs.** Directory, finance and budgeting are separate APIM APIs with
   `local.tool_api` wiring MCP tools to the right one. Adding more follows
   [operate.md](operate.md#add-a-backend-api).
 - **Maker steps are manual.** Creating the agent, adding the connector and the first sign-in are done
@@ -259,7 +259,7 @@ These extend the service this design already uses.
 
 - **A plain OpenAPI custom connector, without MCP.** Simpler for an API with a few fixed
   operations and one agent. MCP earns its place when several agents need different slices of the
-  same API, which is what the per-agent servers here show.
+  same API, which is what the shared servers and per-agent allow-list here show.
 - **Microsoft's central agent tooling.** Microsoft is building agent identity and a managed tool
   gateway into Entra and Microsoft 365 (see
   [register an MCP server in Microsoft 365 admin center](https://learn.microsoft.com/microsoft-365/admin/manage/manage-tools-for-agent#bring-your-own-byo-mcp-server)).

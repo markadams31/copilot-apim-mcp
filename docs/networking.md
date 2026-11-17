@@ -124,8 +124,11 @@ reach a backend directly, that authorisation is bypassed. Make API Management th
 - **Keep the backend's own authentication on** (for example, App Service authentication validating
   the token's audience) as defence in depth. Don't re-implement per-agent rules in each backend.
 
-> **In this demonstration:** a smoke test checks that the backend API's private endpoint drops
-> traffic from VPN clients, and that its public endpoint returns 403.
+> **In this demonstration:** a smoke test checks that each backend's private endpoint drops
+> traffic from VPN clients. The three Function apps (directory, finance, budgeting) share one `/27`
+> integration subnet. Microsoft supports sharing a subnet between Flex Consumption apps but recommends a
+> `/26` when several apps share it; the directory app was added after the secure profile was last deployed,
+> so that arrangement is untested.
 
 ### 4. Egress control
 

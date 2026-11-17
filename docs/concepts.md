@@ -21,7 +21,7 @@ the design, in plain language first and technical detail second.
 1. A **Copilot Studio agent** at Contoso needs data from internal systems, which already have
    **REST APIs**.
 2. **Azure API Management** (the gateway) publishes chosen API operations as **MCP tools**, grouped
-   into **MCP servers**. Each server offers the tools one agent is approved for.
+   into **MCP servers**, one for each business domain. A server offers its tools to the agents that use it, and the allow-list decides which each may call.
 3. When a user chats with the agent, the agent's **connector** signs the user in with **Microsoft
    Entra ID** and receives an **access token** that says *which user*, *which agent* and *what it may
    do* (the **scope**).
@@ -63,7 +63,7 @@ decides which tool each agent may call. So:
 - Several agents can't share one *connector*: the connector is the identity, so the gateway couldn't tell
   them apart (confirmed by test: an agent using another agent's connector gets that agent's tools).
 - Servers could instead follow each backend system, or each agent. Grouping by **business domain** (here
-  directory and finance, with budgeting in finance) defines each tool once and keeps the server count
+  directory and finance, with the budgeting tools in finance) defines each tool once and keeps the server count
   low; see [assumptions worth challenging](going-further.md#assumptions-worth-challenging).
 
 **Learn more:** [MCP servers in API Management](https://learn.microsoft.com/azure/api-management/mcp-server-overview) ·
@@ -76,9 +76,9 @@ an existing REST API and publish selected operations as MCP tools, with no chang
 Every call passes through API Management, where policies check identity, apply limits and log activity.
 
 **In this solution:**
-- The backend API is imported into API Management once, from its OpenAPI description.
-- Each MCP server accepts one client app (here, one agent's) and exposes that app's approved operations as tools.
-- **The same API is also reachable as plain REST** (`/tools/...`). So the authorisation rules live on
+- Each backend API (directory, finance, budgeting) is imported into API Management once, from its OpenAPI description.
+- Each MCP server accepts the client apps of the agents that use it, and lists its domain's operations as tools.
+- **The same API is also reachable as plain REST** (`/directory/...`, `/finance/...`, `/budgeting/...`). So the authorisation rules live on
   the API itself, where they apply to both paths. See
   [security.md, rule 1](security.md#1-authorise-at-the-api-not-only-at-the-mcp-server).
 
@@ -129,7 +129,7 @@ The token's **claims** are what API Management decides on:
 **Delegated and app-only access.** In *delegated access* the app acts as a signed-in user (scopes /
 `scp`). In *app-only access* it acts as itself. This solution uses delegated access for directory,
 spend and budgeting tools, and app-only for cost centres (gateway checks an app role, then the
-backend reads as itself). [architecture.md](architecture.md#access-models-delegated-and-app-only) compares the two.
+finance backend reads as itself). [architecture.md](architecture.md#access-models-delegated-and-app-only) compares the two.
 
 **Pre-authorisation and consent.** Each agent app is **pre-authorised** for `Tools.Read`, so users
 aren't asked to consent. An administrator granted **admin consent** for the API to call Graph and
@@ -141,7 +141,7 @@ SQL on users' behalf.
 <summary>Diagram description</summary>
 
 The agent calls its MCP server with the access token. API Management validates the token's
-signature, tenant, audience and scope; checks that the `azp` claim is the agent this server belongs to
+signature, tenant, audience and scope; checks that the `azp` claim is an agent that uses this server
 and that the operation is on that agent's allow-list; applies the per-agent, per-user rate limit and
 writes an audit trace. It then forwards the call and the same token to the backend API and returns
 the result. A failed check stops the call at API Management: 401 for the token, 403 for the
@@ -153,7 +153,7 @@ allow-list, 429 for the limit.
 
 ## On-behalf-of (OBO)
 
-The token at the gateway is only valid for the backend API. To call Graph or Azure SQL **as the same
+The token at the gateway is only valid for this solution's API (the API app registration, which every backend also checks). To call Graph or Azure SQL **as the same
 user**, the backend exchanges that token for a new one (OAuth 2.0 on-behalf-of). Each system then
 applies **that user's** permissions. The alternative, a powerful app identity for everything, would
 bypass data rules.
@@ -165,7 +165,7 @@ Full comparison of delegated vs app-only, and when OBO applies:
 
 ## Managed identity and federated identity credentials
 
-Instead of a client secret, the connector (and the backend's OBO exchange) prove who they are with a
+Instead of a client secret, the connector (and each backend's OBO exchange) prove who they are with a
 **managed identity**. A **federated identity credential** on the app registration tells Entra ID to
 trust tokens from that identity's issuer + subject (`api://AzureADTokenExchange`). No secret exists;
 without a matching subject, sign-in fails with `AADSTS70025`.
