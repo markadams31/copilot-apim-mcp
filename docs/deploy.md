@@ -53,7 +53,7 @@ editors. Some differences may be features still rolling out, not permanent desig
 | **Create it from** | Home → Other ways to build → Agent | Home → **Agent** |
 | **Billing** | Copilot Studio licence or capacity | **Usage-based: needs Copilot Credits in the environment**, including while building and testing |
 | **Tools it accepts** | Prebuilt connectors, custom connectors (including a plain OpenAPI connector) and MCP servers | Prebuilt connectors, MCP servers and workflows. A plain OpenAPI custom connector was refused when added (a "not solution aware" error, even with the connector and the agent in the same solution) |
-| **Asking the user before a tool runs** | A per-tool setting, **Ask the end user before running**, with a message you write. Declining it stopped a write ([ai-safety.md](ai-safety.md#human-oversight)) | No setting. The **Hooks** feature (preview) lists a "Pre tool use" event that can allow, deny or ask for confirmation, but it is greyed out in this tenant |
+| **Asking the user before a tool runs** | A per-tool setting, **Ask the end user before running**, with a message you write. It blocks the call, but approving it did not run the call in testing ([ai-safety.md](ai-safety.md#human-oversight)) | No setting. The **Hooks** feature (preview) lists a "Pre tool use" event that can allow, deny or ask for confirmation, but it is greyed out in this tenant |
 | **Control over a tool's inputs** | Each input can be filled in by the model or fixed to a value you set | A tool's description, connection and sign-in only |
 | **Deterministic steps** | Topics, agent flows, and triggers on the agent (the data policy must allow them) | Workflows only. There are no topics, and the agent has no Triggers section here |
 | **Choice of model** | An older model list. The default is one dated model. A switch keeps a retiring model for 30 more days | A newer model list. The default is **Auto**, which Microsoft can change. Any model can be chosen and fixed |
@@ -70,7 +70,7 @@ editors. Some differences may be features still rolling out, not permanent desig
 |---|---|
 | Open-ended reasoning over MCP tools, as in this repository's main design | Microsoft Copilot |
 | A plain REST (OpenAPI) connector, with no MCP server | Standard |
-| An approval prompt before a write, today | Standard. Re-check the Copilot harness's Pre tool use hook, which may become the equivalent |
+| An approval prompt before a write | Neither is proven. The standard harness's prompt blocks the call but an approval didn't run it in testing. Re-check the Copilot harness's Pre tool use hook, which may become the equivalent |
 | Fixed conversation paths or scheduled and event triggers on the agent | Standard |
 | To fix the model so behaviour doesn't change under you | Either: both let you choose a specific model |
 | Rich usage analytics or voice | Standard |

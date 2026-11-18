@@ -188,3 +188,45 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "backend_errors" {
     }
   }
 }
+
+# The failure the other alerts can't see: an agent that couldn't reach its tools usually says nothing, and
+# the gateway never sees the call. Copilot Studio records one dependency per MCP request, so a failed one
+# is the only trace. Needs each agent's Application Insights connection turned on (docs/observability.md).
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "agent_tool_failures" {
+  name                 = "${var.prefix}-agent-tool-call-failures"
+  resource_group_name  = azurerm_resource_group.rg.name
+  location             = azurerm_resource_group.rg.location
+  description          = "A Copilot Studio agent's MCP request failed before or without reaching the gateway. The agent may have answered the user anyway, with no error."
+  severity             = 2
+  scopes               = [azurerm_log_analytics_workspace.logs.id]
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT15M"
+
+  criteria {
+    query                   = <<-KQL
+      AppDependencies
+      | where AppRoleName == "Microsoft Copilot Studio" and Success == false
+      | summarize Failures = count() by Server = Name
+    KQL
+    time_aggregation_method = "Total"
+    metric_measure_column   = "Failures"
+    threshold               = 0
+    operator                = "GreaterThan"
+    dimension {
+      name     = "Server"
+      operator = "Include"
+      values   = ["*"]
+    }
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  dynamic "action" {
+    for_each = azurerm_monitor_action_group.alerts
+    content {
+      action_groups = [action.value.id]
+    }
+  }
+}

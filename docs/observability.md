@@ -249,6 +249,7 @@ keeps the *Application Insights in Copilot Studio* connector in the Business gro
 |---|---|---|
 | `<prefix>-authz-denial-spike` | More than 20 401/403 responses in 15 minutes, per API | An agent or token probing tools it isn't allowed, or a broken connection |
 | `<prefix>-backend-errors` | More than 5 backend 5xx in 15 minutes | The backend API or Graph/SQL failing |
+| `<prefix>-agent-tool-call-failures` | Any failed MCP request recorded by Copilot Studio in 15 minutes, per server | An agent couldn't reach its tools and may have answered anyway. ✅ The rule fires and reaches Azure Monitor (about 100 seconds after the row arrived), proved with a **synthetic** row. 🔲 Not proved with a real agent failure, because Copilot Studio telemetry didn't reach the workspace for the agents built on 2026-11-18 |
 
 Both are defined in [observability.tf](../infra/modules/contoso-gateway/observability.tf). Set `alert_email` and they use an
 action group that emails that address; without it **nobody is notified**.
@@ -259,7 +260,7 @@ action group that emails that address; without it **nobody is notified**.
   accepted nothing is delivered, although the receiver shows as enabled.
 - A stopped backend API returns 403, which counts towards `authz-denial-spike`, so that alert also
   fires for an outage ([operate.md](operate.md#troubleshooting-from-symptom-to-layer)).
-- ⏳ No alert yet for a failed Copilot Studio tool call, which is the one most worth building.
+- 🔲 The failed Copilot Studio tool call alert is built (`agent-tool-call-failures`), but it only sees agents whose telemetry is connected. The Microsoft Copilot harness editor's settings (Agent details, AI and behaviour, Safety and access, Greeting, Advanced) had no Application Insights field on 2026-11-18, so connecting one needs the environment-level telemetry (preview), untried.
 
 ## What is not observed
 
