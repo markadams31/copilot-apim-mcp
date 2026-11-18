@@ -241,7 +241,7 @@ from that review and were not re-opened; check one before relying on it.
   client app. Custom connectors and MCP servers add no API permissions to it, and Conditional Access on it
   is enforced only in Teams today. See [concepts.md](docs/concepts.md#agent-identity-and-client-app-registration-two-different-things).
 - **Agent identities outlive a destroyed environment.** Eight were left behind by earlier teardowns. Check for
-  them after a destroy (deploy.md teardown step 9) and delete any whose agent is gone.
+  them after a destroy (deploy.md teardown step 10) and delete any whose agent is gone.
 
 **Billing and environments**
 
@@ -283,8 +283,13 @@ an agent on top of it:
   `DELETE .../scopes/admin/apiPolicies/<id>?api-version=2016-11-01`.
 - With a billing plan, delete the environment in the admin center, not through Terraform (the provider
   calls a billing API that returns 403 for a guest principal), then `state rm` it.
-- Soft-deleted API Management instances purge slowly (minutes each):
-  `az apim deletedservice purge --service-name <name> --location <region>`.
+- **Always purge the soft-deleted API Management instance** (deploy.md teardown step 9; about 6 minutes each,
+  `az apim deletedservice purge --service-name <name> --location <region>`). On 2026-11-18 a rebuild while the
+  previous instances were still soft-deleted got 502 on every MCP tool create, and Terraform retried for the
+  full 5-minute timeout per tool. A direct PUT of the same body under another name succeeded in under a second.
+  Purging afterwards didn't clear it at once, so a delay is possible. **Workaround, not in the code:** append
+  `-${random_string.suffix.result}` to the `name` of `azapi_resource.mcp_tool` in `gateway.tf` (that made every
+  tool create succeed in about a second); remove it again once the soft-deleted instances are gone.
 - A published agent with a Recurrence trigger bills each firing. Delete the trigger after testing.
 - Roles granted for the build (subscription Contributor, Power Platform Administrator) are revoked
   last, and only when the user asks.

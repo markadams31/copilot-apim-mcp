@@ -34,24 +34,57 @@ For what each term means, see [concepts.md](concepts.md).
 
 #### Which harness, and Copilot Credits
 
-Every Copilot Studio agent runs on a *harness*, chosen when the agent is created; an agent can't be
-moved from one to the other ([Harnesses in Copilot Studio](https://learn.microsoft.com/microsoft-copilot-studio/harnesses-overview)).
+Every Copilot Studio agent runs on a *harness*, chosen when the agent is created. An agent can't be moved
+from one harness to the other ([Harnesses in Copilot Studio](https://learn.microsoft.com/microsoft-copilot-studio/harnesses-overview)).
+Two are used here, and Microsoft offers both:
+
+- The **Microsoft Copilot harness** is the newer one and the default on the Copilot Studio home page. It
+  was formerly called the GitHub Copilot harness, and the portal may still say either. It is a Copilot
+  Studio framework, not the GitHub Copilot service.
+- The **standard harness** is the earlier, topic-based one. The home page now hides it: use **Other ways to
+  build**, or **Open classic experience** from the menu at the bottom of the sidebar (that switch lasts
+  for the current session only).
+
+The comparison below was made in this tenant on 2026-11-18 by building one agent on each and comparing the
+editors. Some differences may be features still rolling out, not permanent design.
 
 | | Standard harness | Microsoft Copilot harness |
 |---|---|---|
-| Create it from | Home → Other ways to build → Agent (Standard) | Home → **Agent** (Agents list may say **Microsoft Copilot**) |
-| Editor | Tabs: Overview, Knowledge, Tools, Topics | One page: Instructions, Model, Channels, Skills, Tools, Knowledge |
-| Deterministic automation | Topics and agent flows | Workflows; no topics |
-| Billing | Copilot Studio licence or capacity | **Usage-based: needs Copilot Credits in the environment**, including while building and testing |
-| Tested here | Yes: Copilot Studio results in [testing.md](testing.md) | Yes: a lab agent on this harness, with the Finance Assistant's tools, on the rapid profile in a Sandbox with pay-as-you-go; forecast read and update through MCP |
+| **Create it from** | Home → Other ways to build → Agent | Home → **Agent** |
+| **Billing** | Copilot Studio licence or capacity | **Usage-based: needs Copilot Credits in the environment**, including while building and testing |
+| **Tools it accepts** | Prebuilt connectors, custom connectors (including a plain OpenAPI connector) and MCP servers | Prebuilt connectors, MCP servers and workflows. A plain OpenAPI custom connector was refused when added (a "not solution aware" error, even with the connector and the agent in the same solution) |
+| **Asking the user before a tool runs** | A per-tool setting, **Ask the end user before running**, with a message you write. Declining it stopped a write ([ai-safety.md](ai-safety.md#human-oversight)) | No setting. The **Hooks** feature (preview) lists a "Pre tool use" event that can allow, deny or ask for confirmation, but it is greyed out in this tenant |
+| **Control over a tool's inputs** | Each input can be filled in by the model or fixed to a value you set | A tool's description, connection and sign-in only |
+| **Deterministic steps** | Topics, agent flows, and triggers on the agent (the data policy must allow them) | Workflows only. There are no topics, and the agent has no Triggers section here |
+| **Choice of model** | An older model list. The default is one dated model. A switch keeps a retiring model for 30 more days | A newer model list. The default is **Auto**, which Microsoft can change. Any model can be chosen and fixed |
+| **Content moderation default** | Low | Medium |
+| **Other features** | Voice, entities, languages, component collections | Skills, memory (preview), hooks (preview), download |
+| **Channels** | Teams and Microsoft 365, SharePoint, and the customer-engagement channels (our data policy blocks most) | Teams and Microsoft 365, a demo website, and an app |
+| **Monitoring** | An analytics page: outcomes, engagement, sentiment, billing | A simpler page: sessions, success rate, credits used, reactions |
+| **Evaluation** | The tab is present but disabled while "Move data across regions" is off, as it is here | The Evaluate tab failed to load here. The cause isn't confirmed |
+| **Other agents calling it** | On by default | On by default |
 
-The Microsoft Copilot harness was formerly called the GitHub Copilot harness, and the portal's Agents list
-may still say either. The Power Platform admin center's **Harness** column (Manage → Copilot Studio) still
-shows the old value, **GitHub Copilot**, as of 2026-11-17. It is a Copilot Studio framework, not the GitHub Copilot service. **This
-repository prefers it** once a Sandbox with pay-as-you-go is in place.
+**Which to choose.** Choose by what the agent has to do. Neither harness is a safe default for everything.
 
-The gateway, the connector and the tools are the same for both.
-[add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) covers both; its screenshots show the standard harness.
+| If the agent needs | Use |
+|---|---|
+| Open-ended reasoning over MCP tools, as in this repository's main design | Microsoft Copilot |
+| A plain REST (OpenAPI) connector, with no MCP server | Standard |
+| An approval prompt before a write, today | Standard. Re-check the Copilot harness's Pre tool use hook, which may become the equivalent |
+| Fixed conversation paths or scheduled and event triggers on the agent | Standard |
+| To fix the model so behaviour doesn't change under you | Either: both let you choose a specific model |
+| Rich usage analytics or voice | Standard |
+| Skills, memory or hooks | Microsoft Copilot |
+
+The Microsoft Copilot harness is the main path in this repository, once a Sandbox with pay-as-you-go is in
+place, because it takes the MCP tools and is the one the home page offers by default. The standard harness is the
+fallback where one of the rows above decides it. The Power Platform admin center's **Harness** column
+(Manage → Copilot Studio) still shows the old value, **GitHub Copilot**, as of 2026-11-17.
+
+The gateway, the connector and the tools are the same for both
+([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) covers both; its screenshots show the standard harness).
+Both were tested here: the standard harness on the secure profile, and the Microsoft Copilot harness on the
+rapid profile in a Sandbox with pay-as-you-go ([testing.md](testing.md)).
 
 **An environment with no credits can't run a Microsoft Copilot harness agent.** The Preview tab answers "You
 need credits to continue … This environment is out of credits" (`EnforcementUsageCredits`). A trial
@@ -209,7 +242,7 @@ All in one resource group, `rg-<prefix>-agent-gateway`.
 | Smart-detector alert rule ("Failure Anomalies") and action group ("Application Insights Smart Detection") | Application Insights defaults | **Automatic** | Both. They block deleting the resource group |
 | `NWTA-…` data collection rule and endpoint | Traffic Analytics | **Automatic** | Secure |
 | `NetworkWatcherRG` | Azure's network diagnostics group | **Automatic**; free and recreated | Secure |
-| **Soft-deleted API Management** | Azure's retention after delete | **Automatic**; free, purges itself | Both |
+| **Soft-deleted API Management** | Azure's retention after delete | **Automatic**; free, but purge it in teardown step 9 so a rebuild isn't blocked | Both |
 
 ### Microsoft Entra ID
 
@@ -256,7 +289,7 @@ except the agent identities above and the Teams installs.
 
 | Item | Why |
 |---|---|
-| Azure **Owner** (or Contributor plus User Access Administrator) on the subscription, an Entra admin role that can grant consent, **Power Platform Administrator** | Needed by whoever deploys. Granted by hand; revoke last ([Teardown](#teardown) step 10) |
+| Azure **Owner** (or Contributor plus User Access Administrator) on the subscription, an Entra admin role that can grant consent, **Power Platform Administrator** | Needed by whoever deploys. Granted by hand; revoke last ([Teardown](#teardown) step 11) |
 | `terraform.tfvars`, Terraform state and backups, `.msal_cache.json`, the `vpn/` directory (secure) | Local to the deployer; not removed by a destroy |
 
 ## Stand up the stack
@@ -340,8 +373,8 @@ Removing a deployment has an order. A plain `terraform destroy` fails partway on
 worse, can delete two service principals that belong to the whole tenant. Follow these steps.
 
 [What gets created](#what-gets-created) lists every object. A destroy doesn't remove the billing plan,
-the agent identities, the Teams installs, the auto-created Azure resources or the local files; steps 5, 8 and 9
-cover them.
+the agent identities, the Teams installs, the auto-created Azure resources, the soft-deleted API Management
+instance or the local files; steps 5, 8, 9 and 10 cover them.
 
 Run every command in the profile's directory (`terraform -chdir=infra/profiles/<profile> ...`). All
 resource addresses are under `module.gateway`. Plan each destroy to a file, read it, then apply the
@@ -349,7 +382,7 @@ file.
 
 | | Rapid profile | Secure profile |
 |---|---|---|
-| Steps | 3, 6 to 10 (and 4 and 5 if the environment has a billing plan; step 5 is never optional if a plan exists) | All |
+| Steps | 3, 6 to 11 (and 4 and 5 if the environment has a billing plan; step 5 is never optional if a plan exists) | All |
 | Time, as measured | About 10 minutes | About 35 minutes |
 
 ### Steps
@@ -416,7 +449,24 @@ file.
 
    `az resource list -g <resource group>` shows what is left.
 
-9. **Check what survived.**
+9. **Purge the soft-deleted API Management instance.** Azure keeps a deleted instance for days, and a
+   rebuild started while it is still there can be refused: on 2026-11-18 every MCP tool create returned
+   502 and Terraform retried until its 5-minute timeout. Purging is part of every teardown. It takes about
+   6 minutes for each instance, and only an instance of this deployment should be purged:
+
+   ```bash
+   az apim deletedservice list --query "[?starts_with(name,'apim-<prefix>-')].name" -o tsv
+   az apim deletedservice purge --service-name <name> --location <region>
+   ```
+
+   Whether holding the names was the cause on 2026-11-18 wasn't confirmed: purging both instances didn't
+   clear the 502 straight away, so a delay is possible. **Workaround if it happens again:** purge, wait, and
+   re-apply. If the 502s persist, give the tool resources unique names for that deployment by appending
+   `-${random_string.suffix.result}` to `name` in the `azapi_resource.mcp_tool` resource in `gateway.tf`
+   (a direct request with the same body under another name succeeded in under a second). This was
+   tried on 2026-11-18 and then removed; it isn't part of the standard build.
+
+10. **Check what survived.**
 
    | Check | Command |
    |---|---|
@@ -425,15 +475,14 @@ file.
    | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
    | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
    | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
+   | No soft-deleted API Management instance remains | `az apim deletedservice list -o tsv` prints nothing for this prefix |
    | No agent identities are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its agent identity, but destroying the environment around it did not: eight were left after earlier teardowns |
 
-10. **Revoke any roles granted for the build last** (subscription Contributor, Power Platform
+11. **Revoke any roles granted for the build last** (subscription Contributor, Power Platform
     Administrator). Steps 4 and 5 need them.
 
 ### What is left behind
 
-- **Soft-deleted API Management instances.** They cost nothing and are purged automatically. To purge
-  one now, or to reuse its name: `az apim deletedservice purge --service-name <name> --location <region>`.
 - **`NetworkWatcherRG`**, which Azure creates for any virtual network. It is free, and Azure recreates
   it.
 - **Local files:** the VPN profile and the `vpn/` directory, `terraform.tfvars`, and the token cache

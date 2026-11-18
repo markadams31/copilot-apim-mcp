@@ -127,7 +127,38 @@ general knowledge, with no error ([ai-safety.md](ai-safety.md#silent-failure)).
 | **Run** | Every tool call passes the gateway: allow-list, role, parameters, rate limit, audit trace | ✅ |
 | **Change** | A Terraform plan for the server and agent maps; the smoke test afterwards | ✅ Mechanism. ⏳ No approval process for changes to the maps |
 | **Promote** (development to test to production) | A connector exported to another environment gets a **new managed identity**, so each environment needs its own federated identity credential | ⏳ One environment only |
-| **Retire** | Remove the agent from `agent_definitions`; delete it in Copilot Studio | 🔲 |
+| **Retire** | The checklist in [retiring an agent](#retiring-an-agent) | 🔲 |
+
+## Retiring an agent
+
+Retiring an agent removes its access and deals with what it left behind. Take the steps in this
+order, and decide what to keep before you delete anything.
+
+| Step | Removes | Note |
+|---|---|---|
+| 1. Decide what must be kept | Nothing yet | See [records](#records-and-retention) below |
+| 2. Remove the agent from `agent_definitions`, and any tool only it used from `server_definitions`, and apply | Its access at the gateway | About 95 seconds, then immediate ✅ |
+| 3. Delete the agent's connector federated identity credential (`copilot_connectors`) and its client app | New sign-ins | Tokens already issued last until they expire |
+| 4. Remove its app role assignments, and the group memberships that existed only for it | The users' entitlements | Takes effect at next token |
+| 5. Delete the agent in Copilot Studio, and its connections | The agent, its instructions and its memory, if it had any | Check what the agent stored before deleting it |
+| 6. Remove its Application Insights connection and any agent-specific alert | Its telemetry | Past data stays until it expires |
+| 7. Confirm | That nothing still reaches the tools | Smoke test: the agent's token is refused, and the audit trace shows no calls |
+
+### Records and retention
+
+Retiring an agent doesn't delete what it recorded, and that is mostly what an audit or a records
+obligation will ask for. Know where each record is and how long it lasts **before** retiring:
+
+| Record | Held in | Lasts | If you need it for longer |
+|---|---|---|---|
+| Who called which tool, for whom, and the decision | The Log Analytics workspace (audit trace and gateway logs) | 30 days as configured ([backend.tf](../infra/modules/contoso-gateway/backend.tf)) | Raise the workspace retention, or export to a storage account with a retention policy. A destroy of the deployment deletes the workspace |
+| Network flows (secure profile) | The flow log storage | 30 days | As above |
+| Conversations, with tool arguments and results | Dataverse, in the agents' environment | Set by the environment, not decided here ([ai-safety.md](ai-safety.md#what-is-retained)) | Decide the retention before relying on it. Deleting the environment deletes them |
+| The change to the system of record | The source system | Its own rules | A write tool should leave its own history there ([ai-safety.md](ai-safety.md#the-write-tool-as-built) notes this one doesn't) |
+| Who changed an agent | Not recorded by this deployment | | See the audit gap in [known governance gaps](#known-governance-gaps) |
+
+The retention period itself comes from your obligations, not from this deployment. What this
+deployment must do is make sure the period is set on each record above and survives the teardown.
 
 ## Licences are part of the control set
 

@@ -271,3 +271,44 @@ which signs in as a confidential client. Revoking a user's sign-in sessions was 
   agent, not the one the user was chatting with. Cross-check with the Copilot Studio telemetry on the
   user's object ID ([the agent's view](observability.md#the-agents-view-tool-calls-from-copilot-studio--needs-the-agents-telemetry-turned-on-below)).
 - **Failures the agent hid:** [the silent-failure query](observability.md#silent-failure-tool-calls-that-failed).
+
+## When an agent misbehaves
+
+An agent that is doing something it shouldn't (calling tools it was talked into, returning data it
+shouldn't, or acting on injected text) is handled in three steps: contain it, work out what it did, and
+only then fix it. Contain first. The levers and their speeds are in
+[governance.md](governance.md#stopping-an-agent-and-revoking-access).
+
+**1. Contain, fastest and most certain first**
+
+1. Remove the tool, or the agent, from `server_definitions` or `agent_definitions` and apply. About 95
+   seconds, then immediate.
+2. If a source system is involved, remove its grant (the database user, the group membership). Immediate.
+3. Remove the user's app role if the tool is app-only. Takes effect at the user's next token.
+4. Block the connector in the data policy, or disable the agent's client app. Takes minutes; tokens
+   already issued last until they expire.
+
+Don't rely on a network rule: it doesn't cut connections that are already open.
+
+**2. Keep the evidence before changing anything.** Log Analytics keeps 30 days by default
+([backend.tf](../infra/modules/contoso-gateway/backend.tf)), and removing a tool or an agent
+doesn't delete its past calls, but a change to the workspace or a destroy does. Export what you need:
+
+- the audit trace for the agent and time window ([activity query](observability.md#activity-who-used-which-tool-through-which-agent-));
+- the gateway log rows for the same window, which hold refusals and throttling;
+- Copilot Studio's rows for the conversation ([the agent's view](observability.md#the-agents-view-tool-calls-from-copilot-studio--needs-the-agents-telemetry-turned-on-below));
+- the conversation transcript, which is the only place the arguments and results are kept together.
+
+**3. Work out what it did**
+
+| Question | Where to look |
+|---|---|
+| Which tools did it call, for whom, and were they allowed? | The audit trace: agent, user's object ID, operation, decision |
+| Did it write anything? | The write tool's calls in the gateway log; the source system's own record of the change |
+| Was the cause the user's prompt, a tool result or a knowledge source? | The conversation transcript, read against the calls above |
+| Was it the agent you think it was? | A borrowed connector names the connector's agent, so confirm against Copilot Studio's rows on the user's object ID |
+| Did a call fail without anyone noticing? | [The silent-failure query](observability.md#silent-failure-tool-calls-that-failed) |
+
+Then fix the cause (the tool, the instruction, the permission), apply, run the smoke test, and re-run
+the probes that cover what happened ([ai-safety.md](ai-safety.md#probes)). Who must be told, and by when,
+is a decision for the system's owner and isn't something this deployment records.

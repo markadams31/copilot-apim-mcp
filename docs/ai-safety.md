@@ -173,6 +173,8 @@ maker ✅, and so was an unattended Microsoft Copilot harness agent, started by 
 | Message text in telemetry | ✅ Off (Copilot Studio's "log sensitive properties") |
 | Tool arguments and results in gateway logs | ✅ Bodies off (0 bytes). Arguments: see [observability.md](observability.md#what-is-recorded-and-what-is-not) |
 | Which model processes the conversation, and where | 🔲 Data movement across regions is off; which models remain available wasn't validated ([governance.md](governance.md#data-residency-australia)) |
+| **Agent memory** (a Copilot Studio preview feature: a per-user store of preferences and context the agent writes for itself) | Off in the agents built here (the editor's toggle). Not tested. If turned on, whatever a user says or a tool returns can be kept across conversations, so decide what may be stored, for how long, who can read it, and how it is purged before enabling it |
+| **Personal data in this design** | Whatever the tools return about a person is held in the conversation transcript. The user's object ID is in the audit trace, the gateway log and Copilot Studio's telemetry. Tool arguments may be in the gateway log's URL ([observability.md](observability.md#what-is-recorded-and-what-is-not)). Each tool you add widens this list, so record which personal data it returns |
 
 ## Probes
 
