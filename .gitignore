@@ -22,6 +22,10 @@ __pycache__/
 .ruff_cache/
 *.zip
 
+# Standard harness exploration: raw captures and generated data stay local.
+# (The generator script and the written findings under docs/ ARE committed.)
+explore/
+
 # Local tool settings
 .claude/
 .icon-packs/

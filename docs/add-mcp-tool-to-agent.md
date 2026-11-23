@@ -17,11 +17,11 @@ order of operations from Terraform to the first test. For vocabulary, see [conce
 - Sign in to Copilot Studio with a **work** account.
 - On the secure profile, the enterprise policy must be linked and the VPN up. The rapid profile's gateway
   is public.
-- The steps use the **Microsoft Copilot harness** (Home → **Agent**), which needs a Sandbox with
-  pay-as-you-go, or Preview returns `EnforcementUsageCredits`. The connector and Terraform steps are
-  identical on the standard harness; the portal paths differ ([appendix](#appendix-standard-harness)).
-  The screenshots come from the Standard builder; on the Microsoft Copilot harness use **Tools → Add tool**
-  on the single editor page. The field names match.
+- The steps work on either harness ([deploy.md](deploy.md#which-harness-and-copilot-credits) compares
+  them). The connector and Terraform steps are identical; only the portal paths differ. The screenshots show
+  the standard builder, and the [appendix](#appendix-microsoft-copilot-harness) covers the other. The
+  Microsoft Copilot harness also needs a Sandbox with pay-as-you-go, or Preview returns
+  `EnforcementUsageCredits`.
 
 ## How the pieces fit
 
@@ -79,9 +79,9 @@ once you have a role.
 
 1. In [Copilot Studio](https://copilotstudio.microsoft.com), select the environment (bottom left).
    Don't use the Default environment: on the secure profile it can't reach the private network.
-2. Select **Home → Agent**. On a new Sandbox you may need **Get role** (System Administrator) first.
-3. Name the agent and **Save** (Ctrl+S) until the page URL contains a bot ID. Naming it on
-   `/agents/new` alone doesn't persist.
+2. Select **Home → Other ways to build → Agent (Standard) → Create**, and wait for "Your agent has been
+   provisioned". On a new Sandbox you may need **Get role** (System Administrator) first.
+   (For the Microsoft Copilot harness, see the [appendix](#appendix-microsoft-copilot-harness).)
 
 ## Step 2: Add an MCP server
 
@@ -199,7 +199,7 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
    the steps are the same.
 
    ![The server's tools listed with a permission toggle for each.](images/testing/mch-tool-permissions.png)
-4. In **Preview** (Microsoft Copilot harness) or the **Test your agent** pane (standard harness), ask something that
+4. In the **Test your agent** pane (standard harness) or **Preview** (Microsoft Copilot harness), ask something that
    needs a tool, for example *"Who am I according to the company directory?"*, *"What is the FY2026
    forecast for cost centre CC-1001?"*, then *"Update the FY2026 forecast for CC-1001 to AUD 450000."*
    Confirm the activity / "Used tool" line names the expected tool. Then try the rest of the
@@ -240,13 +240,15 @@ cosmetic policy differences are normal ([AGENTS.md](../AGENTS.md)). The apply ad
 | Tool calls return 401 | The client ID belongs to a different agent than the MCP server URL |
 | Tool calls return 403 | The tool isn't on a server this agent uses, so it isn't on the agent's allow-list |
 
-## Appendix: Standard harness
+## Appendix: Microsoft Copilot harness
 
-Create the agent from Home → **Other ways to build → Agent (Standard)** → **Create**, and wait for
-"Your agent has been provisioned". Tools live under the **Tools** tab; test in **Test your agent**.
-Steps 2 to 5 (MCP server, managed identity, Terraform, connection) are identical. The Standard harness
-can exercise tools in the Test your agent pane without Copilot Credits; publishing still needs a Sandbox with
-pay-as-you-go ([deploy.md](deploy.md#which-harness-and-copilot-credits)).
+Create the agent from **Home → Agent** instead, name it, and **Save** (Ctrl+S) until the page URL contains a
+bot ID; naming it on `/agents/new` alone doesn't persist. There is one editor page: add the tool with **Tools →
+Add tool**, and test in **Preview**. Steps 2 to 5 (MCP server, managed identity, Terraform, connection) are
+identical, and the field names match. This harness bills from the first build, so the environment needs a
+Sandbox with pay-as-you-go ([deploy.md](deploy.md#which-harness-and-copilot-credits)). The standard
+harness can exercise tools in the Test your agent pane without Copilot Credits; publishing it still needs a
+licence or credits (see the same section).
 
 ## Learn more
 

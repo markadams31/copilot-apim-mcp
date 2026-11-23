@@ -28,7 +28,7 @@ For what each term means, see [concepts.md](concepts.md).
 | Licence | Needed by | Why | Notes |
 |---|---|---|---|
 | **Copilot Studio**: a Copilot Studio licence, pay-as-you-go billing, or the trial | Makers | Building agents and **adding tools**. Without it the Tools page says "Upgrade your license to start using tools" | The trial can build and test but not publish. Starting it asks for job title, company and phone |
-| **Microsoft 365 E5**, or the E5 Compliance / Information Protection add-ons | **Every user of the environment** (makers and people chatting with the agents) | **Power Platform Virtual Network support** requires an E5-class licence | The E5 trial is 25 licences for a month and needs a payment method plus a completed organisation profile |
+| **Microsoft 365 E5**, or the E5 Compliance / Information Protection add-ons | **Users in the environment**. Microsoft's wording doesn't say whether that includes people who only chat with a published agent, so confirm with Microsoft before budgeting | **Power Platform Virtual Network support** requires an E5-class licence | The E5 trial is 25 licences for a month and needs a payment method plus a completed organisation profile |
 | **Power Apps Developer Plan** | The maker who owns a Developer environment | Developer environments are tied to it | Free. Sandbox or Production environments need Dataverse capacity instead |
 | Microsoft Entra ID P1 or P2 | Security and audit | Conditional Access, Microsoft Graph activity logs | Included in E5 |
 
@@ -41,7 +41,7 @@ Two are used here, and Microsoft offers both:
 - The **Microsoft Copilot harness** is the newer one and the default on the Copilot Studio home page. It
   was formerly called the GitHub Copilot harness, and the portal may still say either. It is a Copilot
   Studio framework, not the GitHub Copilot service.
-- The **standard harness** is the earlier, topic-based one. The home page now hides it: use **Other ways to
+- The **standard harness** is the earlier one, with topics (fixed conversation paths) and a model that chooses tools and knowledge. The home page now hides it: use **Other ways to
   build**, or **Open classic experience** from the menu at the bottom of the sidebar (that switch lasts
   for the current session only).
 
@@ -50,10 +50,11 @@ editors. Some differences may be features still rolling out, not permanent desig
 
 | | Standard harness | Microsoft Copilot harness |
 |---|---|---|
+| **Microsoft's positioning** ([guidance](https://learn.microsoft.com/microsoft-copilot-studio/guidance/choose-harness)) | Short interactions with few steps, where consistency and control matter | Long-running, multi-step work across tools, files and larger context. Its path is less predictable |
 | **Create it from** | Home → Other ways to build → Agent | Home → **Agent** |
 | **Billing** | Copilot Studio licence or capacity | **Usage-based: needs Copilot Credits in the environment**, including while building and testing |
 | **Tools it accepts** | Prebuilt connectors, custom connectors (including a plain OpenAPI connector) and MCP servers | Prebuilt connectors, MCP servers and workflows. A plain OpenAPI custom connector was refused when added (a "not solution aware" error, even with the connector and the agent in the same solution) |
-| **Asking the user before a tool runs** | A per-tool setting, **Ask the end user before running**, with a message you write. It blocks the call, but approving it did not run the call in testing ([ai-safety.md](ai-safety.md#human-oversight)) | No setting. The **Hooks** feature (preview) lists a "Pre tool use" event that can allow, deny or ask for confirmation, but it is greyed out in this tenant |
+| **Asking the user before a tool runs** | A per-tool setting, **Ask the end user before running**, with a message you write. It blocks the call until the user answers. Approving did not run the call on the MCP connector (2026-11-17 and 18), but on the Outlook connector "Yes" sent the email and "No" didn't, every time (2026-11-20). Why they differ isn't known ([ai-safety.md](ai-safety.md#human-oversight)) | No setting. The **Hooks** feature (preview) lists a "Pre tool use" event that can allow, deny or ask for confirmation, but it is greyed out in this tenant |
 | **Control over a tool's inputs** | Each input can be filled in by the model or fixed to a value you set | A tool's description, connection and sign-in only |
 | **Deterministic steps** | Topics, agent flows, and triggers on the agent (the data policy must allow them) | Workflows only. There are no topics, and the agent has no Triggers section here |
 | **Choice of model** | An older model list. The default is one dated model. A switch keeps a retiring model for 30 more days | A newer model list. The default is **Auto**, which Microsoft can change. Any model can be chosen and fixed |
@@ -68,23 +69,65 @@ editors. Some differences may be features still rolling out, not permanent desig
 
 | If the agent needs | Use |
 |---|---|
-| Open-ended reasoning over MCP tools, as in this repository's main design | Microsoft Copilot |
+| MCP tools through the gateway, as in this repository's main design | Either |
+| Long, multi-step work across many tools, where a less predictable path is acceptable | Microsoft Copilot |
 | A plain REST (OpenAPI) connector, with no MCP server | Standard |
-| An approval prompt before a write | Neither is proven. The standard harness's prompt blocks the call but an approval didn't run it in testing. Re-check the Copilot harness's Pre tool use hook, which may become the equivalent |
+| Testing without Copilot Credits | Standard |
+| An approval prompt before a write | Neither is proven for the MCP tools. The standard harness's prompt works on a first-party connector (Outlook) but an approval didn't run the call on the MCP connector. Re-check the Copilot harness's Pre tool use hook, which may become the equivalent |
 | Fixed conversation paths or scheduled and event triggers on the agent | Standard |
 | To fix the model so behaviour doesn't change under you | Either: both let you choose a specific model |
 | Rich usage analytics or voice | Standard |
 | Skills, memory or hooks | Microsoft Copilot |
 
-The Microsoft Copilot harness is the main path in this repository, once a Sandbox with pay-as-you-go is in
-place, because it takes the MCP tools and is the one the home page offers by default. The standard harness is the
-fallback where one of the rows above decides it. The Power Platform admin center's **Harness** column
+Neither harness is the default choice: they continue to exist side by side and suit different work. The
+standard harness takes the MCP tools and the plain REST connector, can be built and tested without Copilot
+Credits, and once published costs nothing for people with a Microsoft 365 Copilot licence using it in
+Microsoft 365 channels (see the billing table below). The Microsoft Copilot harness suits long, multi-step
+work, and you plan for credits from the first build. The Power Platform admin center's **Harness** column
 (Manage → Copilot Studio) still shows the old value, **GitHub Copilot**, as of 2026-11-17.
 
 The gateway, the connector and the tools are the same for both
 ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md) covers both; its screenshots show the standard harness).
 Both were tested here: the standard harness on the secure profile, and the Microsoft Copilot harness on the
-rapid profile in a Sandbox with pay-as-you-go ([testing.md](testing.md)).
+rapid profile in a Sandbox with pay-as-you-go ([testing.md](testing.md)). How the standard harness behaves, where it works and where it
+struggles, is in [standard-harness-exploration.md](standard-harness-exploration.md).
+
+**What costs money, and when.** The two harnesses are billed on different models. The standard harness
+starts billing **after publishing**; the Microsoft Copilot harness bills **from the moment you start
+building** ([usage-based billing overview](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/billing-credit-overview),
+[billing FAQ](https://learn.microsoft.com/microsoft-copilot-studio/faq-billing-licensing),
+[managing Copilot harness costs](https://learn.microsoft.com/power-platform/admin/manage-usage-microsoft-copilot-harness)).
+
+| | Standard harness | Microsoft Copilot harness |
+|---|---|---|
+| **Building and testing** | **Free.** Activity in the test chat doesn't consume credits (Microsoft's FAQ; also seen here, in an environment with none) | **Billed.** Building, Preview and evaluations consume credits. Without credits, Preview fails with `EnforcementUsageCredits`. Here, a Preview session read about 3 credits after a one-tool question and about 33 after a multi-call one |
+| **Publishing** | The maker needs a Microsoft 365 Copilot licence, or a Copilot Studio user licence with credits available to the environment. A trial licence can't publish. At least one channel is needed | Needs credits in the environment |
+| **Used by people with a Microsoft 365 Copilot licence**, in Teams, Copilot Chat or SharePoint | **No charge**, within fair-use limits, when the agent runs as the signed-in user | **Billed.** The licence doesn't cover this harness |
+| **Everything else**: users without that licence, other channels, triggers and autonomous runs | Billed per feature (below) | Billed |
+| **How usage is measured** | Per feature: a generative answer is 2 credits and each tool call (an *agent action*) is 5. A **reasoning model** adds 10 credits per 1,000 tokens | Language-model tokens, tools (including MCP servers), and the harness itself |
+
+**Reasoning models multiply the cost.** Microsoft's own worked example of one message from an agent on a
+reasoning model comes to 141 credits, or 461 at the start of a new conversation, before the feature rates
+are added ([billing rates](https://learn.microsoft.com/microsoft-copilot-studio/requirements-messages-management#billing-examples)).
+A model that isn't a reasoning model is billed at the feature rates alone.
+
+**Prices.** Microsoft Learn gives rates in credits, not money. Third-party summaries consistently quote
+US$0.01 a credit on pay-as-you-go and US$200 a month for a 25,000-credit prepaid pack. Confirm local prices
+with Microsoft or a licensing partner. Prepaid credits don't carry over to the next month.
+
+**Controls.** Azure budgets and alerts don't stop pay-as-you-go usage. An agent's monthly limit with
+**Stop usage** does, but it doesn't stop the agent flows that agent calls. Those are capped through the
+environment's allocation and billing plan.
+
+Costs that are not Copilot Credits, and apply to either harness:
+
+| Cost | Applies to | Where |
+|---|---|---|
+| E5-class licences | Every user of the environment, for Power Platform Virtual Network support | [Licences](#2-licences) above |
+| Dataverse capacity | A Sandbox or Production environment (the pay-as-you-go plan has a Dataverse meter) | The pay-as-you-go notes below |
+| Azure resources | API Management, backends, network | [architecture.md](architecture.md#cost-of-this-demonstration) |
+
+Using the standard harness defers the credit cost to publishing. It doesn't remove it.
 
 **An environment with no credits can't run a Microsoft Copilot harness agent.** The Preview tab answers "You
 need credits to continue … This environment is out of credits" (`EnforcementUsageCredits`). A trial
@@ -99,7 +142,7 @@ Ways to get credits (an administrator allocates them to the environment):
 | **Pay-as-you-go** (a billing plan linked to an Azure subscription) | None up front; billed monthly | Budgets and alerts don't stop usage; set a limit on the agent with **Stop usage** to cap it |
 | Prepaid capacity packs | Up-front purchase | Allocated in Licensing → Copilot Studio → Manage Copilot Credits |
 | Copilot Credits pre-purchase plan | One-year commitment | Bought in the Azure portal; also needs a billing plan |
-| A Microsoft 365 Copilot licence | Per user | Microsoft says it also enables the Microsoft Copilot harness |
+| A Microsoft 365 Copilot licence | Per user | Lets the user build on the Microsoft Copilot harness, but that harness's usage isn't covered and still needs credits. It does cover standard harness agents used in Microsoft 365 channels |
 
 **Pay-as-you-go supports only Production and Sandbox environments**
 ([FAQ](https://learn.microsoft.com/power-platform/admin/pay-as-you-go-issues-faq)). Terraform defaults
@@ -302,8 +345,8 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
 
 ### Sequence
 
-1. **Accounts and licences.** Put the maker's **work** account in `maker_upn`. For the Microsoft Copilot
-   harness, use a **Sandbox with pay-as-you-go**, never Developer. On a rebuild, clear or replace
+1. **Accounts and licences.** Put the maker's **work** account in `maker_upn`. To publish, or to use the
+   Microsoft Copilot harness at all, use a **Sandbox with pay-as-you-go**, never Developer. On a rebuild, clear or replace
    `copilot_connectors`: stale redirect or subject values cause `AADSTS50011`.
 2. **Terraform.** Run `terraform -chdir=infra/profiles/<profile> apply -parallelism=1` for the first
    apply. The secure profile takes 1 to 1.5 hours (mostly API Management); the rapid profile about 11
@@ -315,7 +358,8 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
    ([testing.md](testing.md)). Optional: `uv run scripts/mcp-client-once.py` proves MCP before Copilot
    Studio.
 4. **Create the agent and register the MCP server** ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md)).
-   Prefer Home → **Agent** (Microsoft Copilot harness); save until the URL has a bot ID. Add the MCP
+   Choose the harness ([which to choose](#which-harness-and-copilot-credits)): standard from Home → **Other
+   ways to build** → Agent, or Microsoft Copilot from Home → **Agent**, saving until the URL has a bot ID. Add the MCP
    server with OAuth Manual and a **placeholder** client secret. Copy the redirect URL, then **Cancel**:
    don't create the connection yet.
 5. **Managed identity on the connector.** Power Apps → Custom connectors → Security → Microsoft Entra ID →
@@ -339,7 +383,8 @@ gateway, tested with Copilot Studio. Maker steps in the portals are in
 
 ### Make the agent available to users
 
-Verified on the Microsoft Copilot harness, rapid profile, in a new trial tenant.
+Verified on the Microsoft Copilot harness, rapid profile, in a new trial tenant. Not yet repeated on the standard
+harness, which publishes to the same Teams channel.
 
 1. In Copilot Studio, open the agent. **Channels → + → Teams + Microsoft 365.** Choose **Microsoft Teams only** (or
    Microsoft Copilot and Teams): the choice **cannot be changed after publishing**. Add the channel, then **Publish**
@@ -468,15 +513,15 @@ file.
 
 10. **Check what survived.**
 
-   | Check | Command |
-   |---|---|
-   | State is empty | `terraform state list` |
-   | No resource group | `az group list --query "[?contains(name,'<prefix>')].name"` |
-   | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
-   | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
-   | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
-   | No soft-deleted API Management instance remains | `az apim deletedservice list -o tsv` prints nothing for this prefix |
-   | No agent identities are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its agent identity, but destroying the environment around it did not: eight were left after earlier teardowns |
+    | Check | Command |
+    |---|---|
+    | State is empty | `terraform state list` |
+    | No resource group | `az group list --query "[?contains(name,'<prefix>')].name"` |
+    | The billing plan is gone | Power Platform admin center → Licensing → Billing plans. Nothing listed, or none that you created for this deployment |
+    | The data policy is gone | Power Platform admin center → Policies → Data policies. If it remains, delete it there |
+    | The app registrations, the Finance Readers group and the tenant diagnostic setting are gone | Microsoft Entra admin center |
+    | No soft-deleted API Management instance remains | `az apim deletedservice list -o tsv` prints nothing for this prefix |
+    | No agent identities are left from the deleted agents | Microsoft Entra admin center → Agent ID → Agent identities, or `az rest --method get --url "https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?\$select=id,displayName,createdDateTime"`. Delete any whose agent no longer exists. Deleting an agent removes its agent identity, but destroying the environment around it did not: eight were left after earlier teardowns |
 
 11. **Revoke any roles granted for the build last** (subscription Contributor, Power Platform
     Administrator). Steps 4 and 5 need them.

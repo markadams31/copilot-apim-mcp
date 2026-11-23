@@ -245,6 +245,7 @@ the layer first.
 | `app_only_connect_failed` (no database user for the identity) or `app_only_query_failed` (no `SELECT` on the view) from `finance_list_cost_centres` | 5 | Does the finance backend's identity have a database user and `SELECT` on `finance.v_cost_centres`? | Run `scripts/sql-setup.py` in a deploy window |
 | `database_refused` (403) from `finance_query_spend` | 5 | Is the user in Contoso Finance Readers (`finance_reader_upns`), and has `sql-setup.py` given the group its database user? A new member needs a fresh sign-in | Add them to the group through review. Azure SQL authorises the user, not the agent, so this is the control working |
 | **400** from `finance_query_spend` with `"rejected_by": "gateway"`, or `invalid_category`, `invalid_dates`, `invalid_range` from the backend | 3 or 5 | The arguments: category one of travel, software, training, equipment, all; dates as YYYY-MM-DD, `from` before `to`, at most 12 months apart | Usually the model's arguments; rephrase the question. A gateway 400 isn't in the audit trace |
+| "I couldn't find it" for a document just added as agent knowledge | None (agent knowledge, not the gateway) | The knowledge page says **Ready**, but newly added files weren't searchable for about an hour in testing | Wait, then ask again before suspecting the document ([findings](standard-harness-exploration.md)) |
 | `finance_query_spend` fails through MCP but works as plain REST | 3 | Was a parameter made optional in [openapi.yaml](../backend/finance/openapi.yaml)? The MCP layer then corrupts the query string | Keep every query parameter required ([guidelines](#add-a-tool-a-new-rest-operation)) |
 
 ### Faults injected, and what they looked like
@@ -264,7 +265,7 @@ which signs in as a confidential client. Revoking a user's sign-in sessions was 
 
 ### Where each signal lives
 
-- **Who called which tool, and was it allowed:** the audit trace in `ApiManagementGatewayLogs`
+- **Who called which tool, and was it allowed:** the audit trace in Application Insights (`AppTraces`)
   ([activity and denials queries](observability.md#activity-who-used-which-tool-through-which-agent-)).
 - **Which agent is it really:** the trace attributes a call to the agent whose **connector** made it
   (the token's `azp`). If a maker attaches another agent's connector, the trace names the connector's

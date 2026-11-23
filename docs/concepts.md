@@ -167,8 +167,9 @@ Full comparison of delegated vs app-only, and when OBO applies:
 
 Instead of a client secret, the connector (and each backend's OBO exchange) prove who they are with a
 **managed identity**. A **federated identity credential** on the app registration tells Entra ID to
-trust tokens from that identity's issuer + subject (`api://AzureADTokenExchange`). No secret exists;
-without a matching subject, sign-in fails with `AADSTS70025`.
+trust tokens from that identity's issuer + subject (`api://AzureADTokenExchange`). No secret exists.
+With the credential missing, sign-in fails with `AADSTS70025`; with a wrong subject, the token exchange
+fails with `AADSTS70021`.
 
 A managed identity is a **credential**, not an access model: it does not change whose permissions
 apply ([architecture.md](architecture.md#access-model-and-credential-are-separate-choices)). Maker
@@ -183,13 +184,18 @@ steps to turn the connector onto managed identity and register the subject:
 
 Every Copilot Studio agent runs on a **harness**: the runtime between the agent's definition and the
 language model. It decides when to call the model, what to send it and which tools to call. The
-harness is chosen when the agent is created and affects features and billing. This solution uses the
-**Microsoft Copilot harness** (formerly the GitHub Copilot harness) for its
-agents; the **standard harness** runs rule-based agents with topics. The official
-[harness overview](https://learn.microsoft.com/microsoft-copilot-studio/harnesses-overview) compares
-them, and [deploy.md](deploy.md#which-harness-and-copilot-credits) covers billing here.
+harness is chosen when the agent is created, can't be changed afterwards, and affects features and
+billing. Both harnesses work with this gateway; [deploy.md](deploy.md#which-harness-and-copilot-credits)
+says which to choose and how each is billed, and the official
+[harness overview](https://learn.microsoft.com/microsoft-copilot-studio/harnesses-overview) compares them.
 
-An agent on the Microsoft Copilot harness is built from the parts below, all configured on the **Build**
+- The **standard harness** combines topics (fixed conversation paths) with a model that chooses tools and
+  knowledge. It suits short, controlled interactions and can be built and tested without Copilot Credits.
+  What we measured on it is in [standard-harness-exploration.md](standard-harness-exploration.md).
+- The **Microsoft Copilot harness** (formerly the GitHub Copilot harness) has no topics. It suits long,
+  multi-step work and bills from the first build.
+
+The parts below belong to an agent on the Microsoft Copilot harness, all configured on the **Build**
 tab ([About agents powered by the Microsoft Copilot harness](https://learn.microsoft.com/microsoft-copilot-studio/agents-experience/overview)).
 Each row describes the setting and explains its purpose: why it matters and what sets it apart from the others.
 

@@ -2,7 +2,7 @@
 
 For AI coding agents setting up, running or changing this project. People should read
 [README.md](README.md) and [docs/](docs/) instead; this file is terse on purpose and records what was
-learnt the hard way. Everything below was observed in one tenant (2026-11-09 to 11-17) unless it says
+learnt the hard way. Everything below was observed in one tenant (2026-11-09 to 11-23) unless it says
 otherwise. Where a claim wasn't verified it's marked **(unverified)**.
 
 ## What this is
@@ -66,7 +66,9 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 - The tenant had 0 MB prepaid Dataverse capacity; the plan's **Dataverse meter** covered creation.
 - In the billing-plan wizard, ticking **Copilot Studio** also ticked **Windows 365 for Agents** (a
   separate paid product). Untick it.
-- Unmanaged Developer environments stop working on 2026-12-15 (Learn). Prefer Sandbox regardless.
+- Unmanaged Developer environments stop working on 2026-12-15 (Learn). Prefer Sandbox regardless. A free
+  Developer environment is fine for a throwaway, Preview-only test of the standard harness with no gateway
+  (as in [standard-harness-exploration.md](docs/standard-harness-exploration.md)); it can't publish.
 
 ## Terraform
 
@@ -118,10 +120,14 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 
 ## Copilot Studio / Power Apps maker wiring (hard lessons)
 
-- **Prefer the Microsoft Copilot harness** (Home → **Agent**; formerly called the GitHub Copilot
-  harness, and the portal may still say either). Gateway / connector / Terraform steps match Standard; editor and billing differ.
-  Needs Sandbox + pay-as-you-go or Preview says `EnforcementUsageCredits`. The Finance
-  Assistant of the earlier secure-profile build was Standard; don't default to Standard unless asked.
+- **Neither harness is the default.** Standard (Home → Other ways to build → Agent) and Microsoft Copilot (Home →
+  **Agent**; formerly the GitHub Copilot harness, and the portal may still say either) both exist and suit
+  different work; choose with the table in [docs/deploy.md](docs/deploy.md#which-harness-and-copilot-credits).
+  Gateway / connector / Terraform steps are the same; editor and billing differ. The Copilot harness needs
+  Sandbox + pay-as-you-go or Preview says `EnforcementUsageCredits`; the standard harness tests without credits.
+- **When testing knowledge answers in Preview**, files added as knowledge show Ready but weren't searchable for about
+  an hour (2026-11-23), and a topic-narrowing instruction can make the agent refuse in-scope questions. Don't read a
+  "couldn't find it" from a fresh upload as a retrieval limit; see [standard-harness-exploration.md](docs/standard-harness-exploration.md).
 - **Save is required** on the Copilot harness: naming on `/agents/new` alone does not persist; Save
   (Ctrl+S) until the URL has a bot id. Agent and environment IDs die with the environment, so never
   reuse IDs from an earlier build.
@@ -181,6 +187,10 @@ Follow **[docs/deploy.md](docs/deploy.md#stand-up-the-stack)** end to end. Prere
 - Signing out can drop the browser tab group; recreate it with `tabs_context_mcp` (createIfEmpty).
 - A "Leave site?" dialog blocks navigation when a draft has unsaved changes; open a new tab.
 - Don't read credentials from the page or the clipboard. The admin APIs give what you need.
+- With no browser tools, start a separate Chrome with `--user-data-dir=<scratch dir> --remote-debugging-port=9222
+  --remote-debugging-address=127.0.0.1` and drive it with Playwright's `connect_over_cdp`. A person signs in once
+  (MFA) in that window. The profile holds work-account cookies, so keep it out of the repo, and stop Chrome by PID,
+  not `pkill -f`. Force a large viewport, and read a screenshot to confirm state before acting.
 
 ## Dead ends (don't retry)
 
@@ -407,8 +417,8 @@ an agent on top of it:
 - **`permissive_data_policy`** (default false) classifies unlisted connectors as Business
   instead of Blocked. The provider's group names differ: the policy default uses `Confidential` for Business,
   the custom-connector patterns use `Business`. Use it only in short-lived test environments.
-- **Chat context in Teams** persists across days; there is no "new chat" button (type *Restart* or *Start
-  again*). The Microsoft Copilot harness keeps the last 100 messages. Design repeatable tasks around one
+- **Chat context in Teams** persists across days; there is no "new chat" button, and typing *Restart* or *Start
+  again* doesn't clear it (below). The Microsoft Copilot harness keeps the last 100 messages. Design repeatable tasks around one
   conversation per task. See the research in [testing.md](docs/testing.md#evidence-gaps).
 - **Don't click the red badge on a workflow node**: it is the delete button, not an error indicator.
 
@@ -489,7 +499,8 @@ and chats with the published agent; the agent called both tools through the gate
   then Down and Enter. Ctrl+S saves. A published agent flow or workflow isn't needed to test the draft.
 - **Standard harness agent**, to test "Ask the end user before running": Home → Other ways to build → Agent
   (Standard). The setting is under the MCP server tool's Additional details and **needs a message**; without one the
-  call fails closed with `InvalidContent`. Save the tool page, then test in the Test your agent pane.
+  call fails closed with `InvalidContent`. Save the tool page, then test in the Test your agent pane. On the
+  Outlook connector (2026-11-20) the approval did run the call on "Yes"; on the MCP connector it did not.
 - **Second user.** `scripts/smoke.py` and `call-tool.py` take `CONTOSO_MSAL_CACHE` (a separate token cache file) and
   `CONTOSO_LOGIN_AS` (a login hint) so a second account doesn't overwrite the first's sign-in. A new member account
   needs Entra group membership (Terraform) and its own Dataverse user (it is in the environment users group).

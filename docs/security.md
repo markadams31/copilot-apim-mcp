@@ -32,7 +32,7 @@ What the design defends against, and where the defence sits:
 | **The model writes its own query** | "Run `DROP TABLE`", or a crafted filter | Tools take typed parameters; the gateway validates them; the backend API runs one fixed, parameterised statement | ✅ |
 | **A manipulated agent changes data** | The model is steered into setting a forecast to a wrong value | The user's own database permission (only Budget Editors can write), bounded parameters, and the writer recorded by the database. No approval gate and no change history | 🔲 Gated by permission only ([ai-safety.md](ai-safety.md#the-write-tool-as-built)) |
 | **A runaway or abusive agent floods a system** | A loop, or bulk extraction | A rate limit per agent and user | ✅ |
-| **A tool result steers the model** (indirect prompt injection) | A database row containing instructions | Limits the damage, doesn't prevent it: the agent can still only call its own tools, as the user. See [ai-safety.md](ai-safety.md) | ✅ Two crafted tool results were ignored in Preview ([probe 1](ai-safety.md#probes)); weak evidence |
+| **A tool result steers the model** (indirect prompt injection) | A database row containing instructions | Limits the damage, doesn't prevent it: the agent can still only call its own tools, as the user. See [ai-safety.md](ai-safety.md) | ✅ Seven payload types ignored in 25 Preview trials ([probe 1](ai-safety.md#probes)); one model, limited evidence |
 | **A maker attaches another agent's connector** | The borrowed connector brings that agent's tools | Not prevented by the gateway: the connector carries that agent's client app, which is what the gateway trusts. Restrict who can use each connector | ⏳ Confirmed as a gap |
 | **A maker adds an uncontrolled tool or knowledge source** | A third-party MCP server, or a public website | The environment's data policy, an allow-list ([governance.md](governance.md)) | ✅ |
 | **Secrets leak** | A client secret in a repository or a connector | There are none: managed identities with federated identity credentials throughout | ✅ |
@@ -204,7 +204,7 @@ the evidence and the gaps are in [ai-safety.md](ai-safety.md). The security-rele
 | **The model never writes a query.** `finance_query_spend` takes typed parameters and runs one fixed, parameterised statement; the gateway validates the parameters, and the backend API validates them again | ✅ Smoke test check 12 |
 | **Tool descriptions are reviewed like code.** They come from the OpenAPI `description` fields and are instructions to the model | 🔲 A convention, not enforced |
 | **The directory and finance tools are read-only** (`GET`). One budgeting tool writes, without an approval gate | ✅ Reads by construction. 🔲 The write is gated by permission only ([ai-safety.md](ai-safety.md#the-write-tool-as-built)) |
-| **Tool results are untrusted input to the model.** Rules 1 to 4 limit what a steered agent can reach | ✅ Two crafted results ignored; weak evidence ([ai-safety.md](ai-safety.md#probes)) |
+| **Tool results are untrusted input to the model.** Rules 1 to 4 limit what a steered agent can reach | ✅ 25 trials ignored; limited evidence ([ai-safety.md](ai-safety.md#probes)) |
 | **Response size cap**, so a tool can't flood the model's context or return data in bulk | ⏳ |
 | **Content safety on tool results** (API Management's `llm-content-safety` policy) | ⏳ |
 

@@ -198,7 +198,6 @@ Copilot Studio tool, and **none has been tried here**:
 An agent that runs with no user at all (a scheduled or event-triggered one) is a third case, covered
 in [going-further.md](going-further.md#agents-that-run-without-a-user).
 
-
 ### Where this proof of concept stands
 
 | Combination | Status |
