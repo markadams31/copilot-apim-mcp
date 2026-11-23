@@ -127,7 +127,8 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 | Scripted tests over the private network (the secure profile) | Pass, including the two bypass attempts: the REST API called directly, and the backend API called directly. Run before the directory moved to its own Function app, and not repeated since |
 | Real Copilot Studio agents (standard harness, an earlier build) over Power Platform Virtual Network support | Pass: both access models, connector authenticated by a managed identity, data policy enforcement, a published Standard harness agent with a scheduled trigger, fault injection, an alert email arriving |
 | Copilot Studio on the rapid (public) gateway, Microsoft Copilot harness | Pass: the Finance Assistant with two managed-identity connectors (directory and finance) used all five tools in Preview, including a forecast update with no approval step. Probes: identity spoofing, invalid parameters, prompt disclosure, injected instructions in a tool result and a stopped backend were all handled; "everything since 2020" was split into seven calls instead of refused. Evidence screenshots are kept in [docs/images/testing](docs/images/testing/) |
-| Not tested | A second user in a Copilot Studio chat (checked at the gateway only); an unattended Microsoft Copilot harness agent as anyone but the maker, or after its connection expires (one workflow-triggered run as the maker passed; the editor has no Triggers section, so a workflow starts it); Copilot Studio Evaluate, which would not load; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
+| Standard harness behaviour, Preview only, no gateway (fictional documents, Outlook and Office 365 Users connectors) | Retrieval, conflicting documents, tool choice, approval, a three-step chain and injected instructions were measured; spreadsheet arithmetic and "Restart" fail; new knowledge took about an hour to become searchable. Summary in [docs/standard-harness-exploration.md](docs/standard-harness-exploration.md) |
+| Not tested | A second user in a Copilot Studio chat (checked at the gateway only); an unattended Microsoft Copilot harness agent as anyone but the maker, or after its connection expires (one workflow-triggered run as the maker passed; the editor has no Triggers section, so a workflow starts it); Copilot Studio Evaluate, which would not load on the Microsoft Copilot harness and was not run on the standard one; the secure profile with the Microsoft Copilot harness; response size limits; content safety. The full list is in [docs/testing.md](docs/testing.md#evidence-gaps) |
 
 **Who it's for:** platform, security, network and Power Platform teams, and architects, deciding
 whether and how to give Copilot Studio agents governed access to internal systems.
@@ -220,7 +221,8 @@ backends.
 | [deploy.md](docs/deploy.md) | Prerequisites, the stand-up sequence, and teardown |
 | [add-mcp-tool-to-agent.md](docs/add-mcp-tool-to-agent.md) | Step by step: connect a Copilot Studio agent to its MCP server |
 | [operate.md](docs/operate.md) | Adding tools, agents and users; from what the agent shows to the layer at fault |
-| [going-further.md](docs/going-further.md) | Decisions and limits before building on this; agents without a user; Microsoft's AI gateway offerings |
+| [standard-harness-exploration.md](docs/standard-harness-exploration.md) | What the standard harness is good at and where it struggles, from Preview-only tests; the run records are in [standard-harness-runs.md](docs/standard-harness-runs.md) |
+| [going-further.md](docs/going-further.md) | Whether an agent is the right tool, and which build tool; decisions and limits before building on this; agents without a user; Microsoft's AI gateway offerings |
 
 AI coding agents setting the project up should also read [AGENTS.md](AGENTS.md).
 

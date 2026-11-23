@@ -9,6 +9,123 @@ What has not been tested is listed in [testing.md](testing.md#evidence-gaps). Ga
 are in [security.md](security.md), [governance.md](governance.md#known-governance-gaps) and
 [ai-safety.md](ai-safety.md).
 
+## Is an agent the right tool?
+
+Decide this before anything else on this page, which assumes the answer is yes.
+
+### Start with the simplest thing that works
+
+Microsoft's adoption guidance separates three kinds of solution:
+
+| If the task | Use | Microsoft's example |
+|---|---|---|
+| Follows fixed, predictable steps | **Automation**: Power Automate, a Copilot Studio workflow, or code | Routing invoices by vendor code |
+| Needs answers from organisational knowledge, with no actions | **Search and answer** (retrieval-augmented generation) | An HR policy assistant |
+| Needs reasoning over variable information, then deciding or coordinating actions | **An agent**, which can recommend actions for a person to approve or act within set permissions | An IT agent that investigates an incident and recommends a fix |
+
+Then use a ready-made agent, such as Microsoft 365 Copilot's Researcher or Analyst, if one meets the
+need, and build only if none does. Start with **one agent**. Microsoft suggests several only when a use
+case crosses security or compliance boundaries, involves several teams, or is expected to grow. Here, a
+connected agent returned another agent's data
+([governance.md](governance.md#known-governance-gaps)), which is a reason to add agents to a
+conversation only deliberately.
+
+### Which build tool
+
+| | Agent Builder (in Microsoft 365 Copilot) | Copilot Studio | Microsoft Foundry |
+|---|---|---|---|
+| **Who builds** | Business users, in plain language | Makers and IT, low-code | Professional developers, code-first |
+| **What it can use** | Instructions and Microsoft 365 knowledge: SharePoint and Copilot connectors | Connectors, MCP tools, workflows and approvals. What's available depends on the [harness](deploy.md#which-harness-and-copilot-credits) | Any supported model, your own orchestration, search and storage |
+| **Can it call internal APIs through this gateway?** | **No.** It can't author actions that call external services | **Yes.** This proof of concept | Yes, through code or MCP. Not tested here |
+| **Lifecycle and governance** | Sharing and the organisation's agent catalogue, under Microsoft 365 agent controls | Environments, data policies, analytics and release management | Whatever the engineering team builds and runs |
+| **Microsoft's example** | An onboarding or project-information agent | An IT request with approvals | Specialised requirements, with a team that can own the whole lifecycle |
+
+An Agent Builder agent can be copied to Copilot Studio later. The copy is a snapshot and isn't kept in
+sync. An agent that someone builds for themselves and that becomes business-critical needs a formal
+owner.
+
+### Is the use case a good candidate?
+
+Microsoft prioritises use cases through three lenses:
+
+| Lens | Strong candidate | Weak candidate |
+|---|---|---|
+| **Business impact** | An executive sponsor, benefits that are measured, a short rollout | Benefits nobody has quantified; needs significant process redesign |
+| **User desirability** | Clear users with a pain point they feel every day; removes unwanted work | Unclear who benefits; threatens roles or habits |
+| **Technical feasibility** | Mistakes are reversible or contained; the safeguards already exist; needs reasoning over variable inputs | Actions that are hard to undo, such as payments; depends on safeguards that don't exist; fixed steps that automation does more cheaply |
+
+Microsoft's lenses don't cover how reliably an agent finishes the work. Four checks on the task itself
+fill that gap. The first and third come from research; the second and fourth are judgement:
+
+| Check | Why |
+|---|---|
+| **Each step is short, and checked before the next** | Reliability falls as unsupervised chains get longer. In METR's measurements, models that sometimes complete tasks taking people hours are reliable only on tasks of minutes. In TheAgentCompany, the best agents fully completed about 30% of realistic office tasks. Both measured mostly software and office tasks |
+| **A person can check the result quickly** | An error that is hard to spot is the one that gets through |
+| **It supports a decision rather than making it** | In a meta-analysis of 106 experiments, people working with AI did worse on decision tasks, on average, than the better of the two alone, and better on tasks that create content. Pairs still gained where the person was better than the AI |
+| **The data is reachable through APIs the user may use** | The agent is only as good as what it can reach |
+
+A task with ill-defined steps, many data sources and a lot of judgement fails the first and third
+checks as a whole, but its parts can pass. That points to supporting a decision maker, not replacing one:
+
+| Give the agent | Keep with the person |
+|---|---|
+| Gathering and summarising across systems, with sources | The decision |
+| Drafting options, briefs and comparisons | Weighing trade-offs and context |
+| Checking against a policy or checklist, and flagging gaps | Accountability for the outcome |
+| Short steps that can be checked | Long chains of steps, and anything that changes data without approval |
+
+Much of the left column is search and answer by Microsoft's definition, which is cheaper and more
+predictable than a full agent. Microsoft also positions the **standard harness** for short
+interactions with few steps, and the **Microsoft Copilot harness** for long, multi-step work, which it
+bills from the first build ([deploy.md](deploy.md#which-harness-and-copilot-credits)).
+
+**What testing the standard harness showed** ([findings](standard-harness-exploration.md): Preview only,
+fictional data, a snapshot). It suits the left column above: finding and summarising across a few
+documents, with sources; a short chain of tools with a person approving the write; and a recipient or
+other input fixed by the maker. It struggles with arithmetic over a spreadsheet, so give it a tool that
+calculates. Four things make a pilot look better than it is:
+
+- **New knowledge isn't searchable straight away**, although it says Ready. In our test it took about
+  an hour.
+- **Instructions that narrow the agent's subject can block in-scope questions.**
+- **Undated documents that disagree** are sometimes answered from one of them without a warning.
+- **The approval prompt shows only the maker's wording**, not what will be sent, so the user approves
+  without seeing the content.
+
+**A person reviewing the output isn't a safeguard by itself.** In one study, doctors who had become used
+to AI assistance detected less without it. In a survey, knowledge workers more confident in AI reported
+thinking less critically. Both are small or self-reported, but they point the same way: show the sources
+and what the agent couldn't find, not only its conclusion.
+
+### Before you build
+
+- **A baseline.** Measure the current process first. Without one, a claim of improvement isn't credible.
+- **Success measures beyond cost.** Klarna moved much of its customer service to AI, then hired people
+  back, saying cost had weighed too heavily and quality fell.
+- **Stop criteria.** Microsoft notes that many organisations run dozens of pilots and scale none.
+- **A named owner** in the business area that relies on the agent, who accepts its remaining risk.
+  Microsoft says agents fail more often from unclear ownership than from technical problems.
+- **A credit estimate.** The harness, the model and the number of tool calls drive the cost, and a
+  reasoning model can multiply it ([deploy.md](deploy.md#which-harness-and-copilot-credits)).
+- **An honest count of time saved.** It becomes money only if the freed capacity is used.
+- **Time to change the workflow.** McKinsey found the value comes from redesigning the work around the
+  agent. Microsoft counts that redesign against a use case, because it slows the rollout. Both are right:
+  plan for it.
+
+### Sources: choosing an agent
+
+- Microsoft: [AI agent adoption strategy](https://learn.microsoft.com/azure/cloud-adoption-framework/ai-agents/executive-strategy),
+  [organisational readiness and prioritisation](https://learn.microsoft.com/azure/cloud-adoption-framework/ai-agents/organizational-readiness),
+  [Agent Builder or Copilot Studio](https://learn.microsoft.com/microsoft-365/copilot/extensibility/copilot-studio-experience),
+  [compare Copilot Studio harnesses](https://learn.microsoft.com/microsoft-copilot-studio/guidance/choose-harness)
+- Reliability: [METR, measuring AI ability to complete long tasks](https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/),
+  [TheAgentCompany](https://arxiv.org/abs/2412.14161)
+- People and AI together: [Vaccaro, Almaatouq and Malone, Nature Human Behaviour, 2024](https://www.nature.com/articles/s41562-024-02024-1),
+  [deskilling in colonoscopy, Lancet Gastroenterology & Hepatology, 2025](https://wrap.warwick.ac.uk/id/eprint/191005),
+  [generative AI and critical thinking, CHI 2025](https://advait.org/files/lee_2025_ai_critical_thinking_survey.pdf)
+- Experience: [McKinsey, one year of agentic AI](https://www.mckinsey.com/capabilities/quantumblack/our-insights/one-year-of-agentic-ai-six-lessons-from-the-people-doing-the-work),
+  [Klarna](https://www.entrepreneur.com/business-news/klarna-ceo-reverses-course-by-hiring-more-humans-not-ai/491396)
+
 ## The constraint every choice has to meet
 
 > Agents reach internal systems **without** a public endpoint for the data plane.
@@ -34,7 +151,7 @@ Sources: [virtual network concepts for API Management](https://learn.microsoft.c
 
 | Question | Why it matters | What this proof of concept offers |
 |---|---|---|
-| **Whole-of-life cost** | Beyond the demonstration's cost ([architecture.md](architecture.md#cost-of-this-demonstration)): **every user of the environment needs an E5-class licence** for Power Platform Virtual Network support, plus Copilot Studio capacity and a production API Management tier | Only the demonstration is costed |
+| **Whole-of-life cost** | Beyond the demonstration's cost ([architecture.md](architecture.md#cost-of-this-demonstration)): **users in the environment need an E5-class licence** for Power Platform Virtual Network support (whether that includes people who only chat with a published agent isn't stated: [deploy.md](deploy.md#2-licences)), plus Copilot Studio capacity and a production API Management tier | Only the demonstration is costed |
 | **Resilience** | A private gateway in one region is a single point of failure, while the Power Platform side already spans two regions | Not designed or tested. The Developer tier has no SLA |
 | **Moving between environments** | A connector exported to another environment gets a **new managed identity**, so each environment needs its own federated identity credential. Agents and connectors are also edited by hand in the portal | One environment only |
 | **Who approves a new tool or agent** | A tool grant is an access grant | The mechanism (one reviewed map) exists; the process around it doesn't ([governance.md](governance.md)) |
@@ -42,7 +159,7 @@ Sources: [virtual network concepts for API Management](https://learn.microsoft.c
 | **Connection reliability** | The Copilot Studio connection fell to "Reconnect" a few hours after being made, and the agent then answered without its tools | A fix ([add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md#troubleshooting)); the cause wasn't found |
 | **Retention and compliance** | How long logs and transcripts are kept, and who can read them, decides what can be shown to an auditor | Logs go to one workspace; flow logs keep 30 days. No mapping to a framework |
 | **Write tools** | One tool writes (`budgeting_update_cost_centre_forecast`), with no approval gate and no change history | The options for human approval are set out, and none is built ([ai-safety.md](ai-safety.md#human-oversight)) |
-| **Which harness** | Copilot Studio agents run on the standard harness or the Microsoft Copilot harness. This repository prefers the Microsoft Copilot harness once a Sandbox with pay-as-you-go is linked; both were tested | The gateway is the same for both; the maker experience, billing and available settings differ ([deploy.md](deploy.md#which-harness-and-copilot-credits)) |
+| **Which harness** | Copilot Studio agents run on the standard harness or the Microsoft Copilot harness. Both continue to exist and suit different work: the standard harness for short, controlled interactions (testing needs no credits), the Microsoft Copilot harness for long, multi-step work (billed from the first build). Both were tested | The gateway is the same for both; the maker experience, billing and available settings differ ([deploy.md](deploy.md#which-harness-and-copilot-credits)) |
 
 ## Assumptions worth challenging
 
@@ -90,7 +207,7 @@ handle it.**
 This section sets out what changes for such an agent, measured against this design. Two parts have been
 tested, each once, and both ran as the maker. A published **standard harness** agent with a scheduled
 trigger called a tool through the private gateway ([testing.md](testing.md#governance)). On the Microsoft
-Copilot harness, which this repository otherwise prefers, a workflow with a Recurrence trigger and an
+Copilot harness, a workflow with a Recurrence trigger and an
 Agent node ran the published Finance Assistant unattended and called two tools through the gateway
 ([testing.md](testing.md#evidence-gaps)). Microsoft documents triggers on the agent itself (preview), but
 this environment's agent editor has no Triggers section, so the workflow was the route. It needed the

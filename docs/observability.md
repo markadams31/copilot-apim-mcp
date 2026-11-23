@@ -154,9 +154,9 @@ AppDependencies
 
 When a connection drops to "Reconnect" the agent doesn't show an error: it answers from general
 knowledge, and the user sees a plausible reply with no tool behind it. The failure **is** recorded
-here (checked against a real occurrence), but nothing alerts on it yet ([Alerts](#alerts)). A conversation
-with no tool call at all isn't a failure by itself (chit-chat has none), so detecting absence needs a
-rule per agent. Join Evaluate / Preview runs to the gateway as in [testing.md](testing.md#join-quality-to-the-gateway).
+here (checked against a real occurrence), and an [alert](#alerts) covers it for agents whose telemetry is
+connected. A conversation with no tool call at all isn't a failure by itself (chit-chat has none), so
+detecting absence needs a rule per agent, and none is built. Join Evaluate / Preview runs to the gateway as in [testing.md](testing.md#join-quality-to-the-gateway).
 
 ### Identity: on-behalf-of exchanges and Graph calls ✅
 
@@ -251,7 +251,7 @@ keeps the *Application Insights in Copilot Studio* connector in the Business gro
 | `<prefix>-backend-errors` | More than 5 backend 5xx in 15 minutes | The backend API or Graph/SQL failing |
 | `<prefix>-agent-tool-call-failures` | Any failed MCP request recorded by Copilot Studio in 15 minutes, per server | An agent couldn't reach its tools and may have answered anyway. ✅ The rule fires and reaches Azure Monitor (about 100 seconds after the row arrived), proved with a **synthetic** row. 🔲 Not proved with a real agent failure, because Copilot Studio telemetry didn't reach the workspace for the agents built on 2026-11-18 |
 
-Both are defined in [observability.tf](../infra/modules/contoso-gateway/observability.tf). Set `alert_email` and they use an
+All three are defined in [observability.tf](../infra/modules/contoso-gateway/observability.tf). Set `alert_email` and they use an
 action group that emails that address; without it **nobody is notified**.
 
 - ✅ `authz-denial-spike` fired on a burst of 60 unauthenticated calls, five minutes later, and its
@@ -269,7 +269,7 @@ action group that emails that address; without it **nobody is notified**.
 | **Microsoft Entra logs have been unreliable** | They arrived on the latest deployment and were lost on an earlier one; the cause was not found. Check the tables are filling after every deployment, and read the identity side in the Microsoft Entra admin center if they are not |
 | **Tool names and arguments aren't in Copilot Studio's telemetry** | Deliberate: they would be in the sensitive properties, which are off. Correlate with the gateway's trace on the user's object ID and time |
 | **A role denial and a rejected parameter aren't in the audit trace** | They are separate policy steps. Find them in the gateway log (queries above) |
-| **Nothing alerts on a failed or absent tool call** | The failure most likely to mislead a user leaves no row at the gateway ([ai-safety.md](ai-safety.md#silent-failure)) |
+| **An absent tool call raises no alert, and a failed one only where telemetry is connected** | The failure most likely to mislead a user leaves no row at the gateway ([ai-safety.md](ai-safety.md#silent-failure)) |
 | **Changes to agents** | Dataverse auditing doesn't cover the agent tables, so an edit leaves no audit record there. Purview is untested ([governance.md](governance.md#known-governance-gaps)) |
 | **A blocked bypass attempt shows as Allowed** | Flow logs record it from the source side; alert on the source, not on a denied flow |
 
