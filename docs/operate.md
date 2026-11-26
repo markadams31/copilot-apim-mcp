@@ -1,7 +1,7 @@
 # Operate
 
-Day-two tasks for a running deployment: who gets which tools, adding tools, agents and backends,
-managing user access, and finding the layer at fault when something fails. Removing a deployment is in
+Day-two work on a running deployment: who gets which tools, adding tools, agents and backends, user
+access, and which layer is at fault when something fails. Removing a deployment is in
 [Teardown](deploy.md#teardown).
 
 ## Tools, servers and agents
@@ -245,7 +245,7 @@ the layer first.
 | `app_only_connect_failed` (no database user for the identity) or `app_only_query_failed` (no `SELECT` on the view) from `finance_list_cost_centres` | 5 | Does the finance backend's identity have a database user and `SELECT` on `finance.v_cost_centres`? | Run `scripts/sql-setup.py` in a deploy window |
 | `database_refused` (403) from `finance_query_spend` | 5 | Is the user in Contoso Finance Readers (`finance_reader_upns`), and has `sql-setup.py` given the group its database user? A new member needs a fresh sign-in | Add them to the group through review. Azure SQL authorises the user, not the agent, so this is the control working |
 | **400** from `finance_query_spend` with `"rejected_by": "gateway"`, or `invalid_category`, `invalid_dates`, `invalid_range` from the backend | 3 or 5 | The arguments: category one of travel, software, training, equipment, all; dates as YYYY-MM-DD, `from` before `to`, at most 12 months apart | Usually the model's arguments; rephrase the question. A gateway 400 isn't in the audit trace |
-| "I couldn't find it" for a document just added as agent knowledge | None (agent knowledge, not the gateway) | The knowledge page says **Ready**, but newly added files weren't searchable for about an hour in testing | Wait, then ask again before suspecting the document ([findings](standard-harness-exploration.md)) |
+| "I couldn't find it" for a document just added as agent knowledge | None (agent knowledge, not the gateway) | The knowledge page says **Ready**, but newly added files weren't searchable for about an hour in testing | Wait, then ask again before suspecting the document ([findings](standard-harness-exploration.md)). For what belongs in instructions vs knowledge, see [going-further.md](going-further.md#instructions-vs-knowledge) |
 | `finance_query_spend` fails through MCP but works as plain REST | 3 | Was a parameter made optional in [openapi.yaml](../backend/finance/openapi.yaml)? The MCP layer then corrupts the query string | Keep every query parameter required ([guidelines](#add-a-tool-a-new-rest-operation)) |
 
 ### Faults injected, and what they looked like

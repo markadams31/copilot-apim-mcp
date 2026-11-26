@@ -1,7 +1,7 @@
 # Security policy
 
 This repository is a proof of concept, not a supported product. It deploys real Azure and Power
-Platform resources, so treat any copy of it with the care you'd give infrastructure code.
+Platform resources — treat any copy with the care you'd give infrastructure code.
 
 ## Reporting a vulnerability
 

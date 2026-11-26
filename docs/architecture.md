@@ -1,11 +1,10 @@
 # Architecture
 
-Contoso puts one Azure API Management gateway in front of its internal systems, and the gateway serves
-them to Copilot Studio agents as **MCP tools**. Each agent gets only its approved tools, every call is
-authorised and recorded in one place, and data is read either as the signed-in user (delegated access)
-or, where users have no direct access, as the finance backend's own identity behind an app-role check
-(app-only access). The [README](../README.md) sets out the problem; [concepts.md](concepts.md) explains
-the vocabulary.
+Contoso puts one Azure API Management gateway in front of its internal systems and serves them to
+Copilot Studio agents as **MCP tools**. Each agent gets only its approved tools; every call is
+authorised and recorded in one place; data is read as the signed-in user (delegated access) or, where
+users have no direct access, as the finance backend's identity behind an app-role check (app-only
+access). Problem: [README](../README.md). Vocabulary: [concepts.md](concepts.md).
 
 MCP is an open protocol, so other clients could use the same servers. Copilot Studio is the client this
 was built and tested for ([testing.md](testing.md)).
@@ -250,7 +249,7 @@ Run `sql-setup.py` again to restore both grants.
 
 | Decision | Why | Alternative considered |
 |---|---|---|
-| **One MCP server per business domain**; an agent uses the servers it needs | Each tool is defined once, a system's owner owns one server, and a new agent reuses existing servers | One server per agent: the agent's tool list is exact, but shared tools such as the directory profile are duplicated on every server. One server per backend system: finer, but more connectors for an agent that spans systems (here, finance and budgeting share one server) |
+| **One MCP server per business domain**; an agent uses the servers it needs | Each tool is defined once, a system's owner owns one server, and a new agent reuses existing servers. **Demo trade-off:** the budgeting write shares the `finance` server with the read tools, so every agent on that server can see the write tool's name and description ([ai-safety.md](ai-safety.md#tool-design)); a production layout would often split them | One server per agent: the agent's tool list is exact, but shared tools such as the directory profile are duplicated on every server. One server per backend system: finer, but more connectors for an agent that spans systems |
 | **Authorisation in API Management; the backend trusts only the gateway** | One rule set, generated from one map. Backends stay plain REST APIs | Per-route checks in every backend: duplicated, and they drift |
 | **Delegated access by default** (the on-behalf-of flow) | Source systems keep enforcing their own permissions for each user | App-only access with the finance backend's managed identity: the source can no longer tell users apart, so the gateway must add its own check. Right only where users have no direct access ([Access models](#access-models-delegated-and-app-only)) |
 | **REST to MCP in API Management, not MCP code in each backend** | Existing APIs become tools without changes | An MCP SDK in each service: more code, and more places to secure |

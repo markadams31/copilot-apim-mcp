@@ -1,14 +1,19 @@
 # Standard harness: what it's good at and where it struggles
 
-What we found by testing a Copilot Studio agent on the **standard harness** in the **Preview** tab, with fictional data. Nothing was published and no Azure was used.
+Findings from testing a Copilot Studio agent on the **standard harness** in the **Preview** tab, with
+fictional data. Nothing published; no Azure.
 
-**Read this as a snapshot.** Preview only, the default model (GPT Chat Latest, Nov 2026), English, up to 34 short documents and two Microsoft connectors, 3 to 10 fresh runs per probe, 2026-11-20 and 2026-11-23. Behaviour can change, and Preview doesn't fully match a published channel ([Microsoft says so](https://learn.microsoft.com/microsoft-copilot-studio/authoring-test-bot)). The detail behind each result is in [standard-harness-runs.md](standard-harness-runs.md).
+**Read this as a snapshot.** Preview only; default model (GPT Chat Latest, Nov 2026); English; up to 34
+short documents and two Microsoft connectors; 3 to 10 fresh runs per probe; 2026-11-20 and 2026-11-23.
+Behaviour can change, and Preview doesn't fully match a published channel
+([Microsoft says so](https://learn.microsoft.com/microsoft-copilot-studio/authoring-test-bot)). Run
+records: [standard-harness-runs.md](standard-harness-runs.md).
 
 ## The short version
 
 - **Good at finding and summarising what's in short documents.** In 30 runs on a small set it found the right documents every time, cited them, and said so when the answer wasn't there. With 34 files, lookups were right in 12 of 13 runs once the files had been in for about an hour.
 - **A new file isn't searchable when it says "Ready".** In the first hour after we added 25 files, 22 of 24 lookups failed (21 said "couldn't find it", one errored). The status was Ready throughout. It was the same questions that worked an hour later. Wait, and test, before you tell users a document is live.
-- **Your own instructions can block good answers.** "Help with travel and finance questions only" made the agent refuse in-scope questions the documents could answer: laptops in 9 of 9 runs and the reporting module in 6 of 10. Check what an instruction stops, not only what it allows.
+- **Your own instructions can block good answers.** "Help with travel and finance questions only" made the agent refuse in-scope questions the documents could answer: laptops in 9 of 9 runs and the reporting module in 6 of 10. Check what an instruction stops, not only what it allows. For when to use instructions vs knowledge, see [going-further.md](going-further.md#instructions-vs-knowledge).
 - **Two documents that disagree: it depends on the question.** If they're dated, it used the newer one. If undated, it flagged the conflict in 12 of 13 runs for laptops but only 6 of 10 for monitors; the rest gave one document's answer as the answer.
 - **Weak at arithmetic over a spreadsheet.** It wouldn't total or count rows from a spreadsheet uploaded as knowledge, and one run offered a wrong partial total. Give the agent a tool that does the calculation.
 - **A three-step task worked.** Look me up, find the policy, email me a summary (with approval) completed in 3 of 3 runs, and the emails arrived. Short and clearly worded; longer chains are untested.

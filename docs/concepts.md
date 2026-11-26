@@ -1,8 +1,8 @@
 # Concepts
 
 This solution joins three platforms (Microsoft Copilot Studio, Azure API Management and Microsoft
-Entra ID), and each brings its own vocabulary. This page explains the concepts you need to review
-the design, in plain language first and technical detail second.
+Entra ID), each with its own vocabulary. Concepts you need to review the design: plain language first,
+technical detail second.
 
 **Find your section:**
 

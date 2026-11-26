@@ -1,10 +1,15 @@
 # Deploy
 
-Everything needed to stand up a deployment, from accounts to agents, and to remove it again. The
-sequence is in [Stand up the stack](#stand-up-the-stack); what must exist first is in
-[Prerequisites](#prerequisites); everything it creates is itemised in
-[What gets created](#what-gets-created); removal is in [Teardown](#teardown). Maker steps in the Copilot Studio
-and Power Apps portals are in [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md).
+Stand up a deployment, or remove one. Jump to the section you need:
+
+| Job | Section |
+|---|---|
+| Accounts, licences, harness and credits | [Prerequisites](#prerequisites) |
+| What Terraform and portals create | [What gets created](#what-gets-created) |
+| Order of operations | [Stand up the stack](#stand-up-the-stack) |
+| Tear it down safely | [Teardown](#teardown) |
+
+Maker steps in Copilot Studio and Power Apps are in [add-mcp-tool-to-agent.md](add-mcp-tool-to-agent.md).
 
 ## Prerequisites
 

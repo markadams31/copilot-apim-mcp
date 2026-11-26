@@ -1,16 +1,16 @@
 # Security
 
-An agent is driven by a language model, and its instructions and tools are often configured by makers
-outside IT. Treat it as a client you can't fully trust: it can be steered by a prompt, by a document it
-reads, or by data a tool returns. Every control on this page assumes the agent will eventually attempt
-something it shouldn't, and puts the refusal somewhere the agent can't influence.
+An agent is driven by a language model; makers outside IT often configure its instructions and tools.
+Treat it as a client you can't fully trust: a prompt, a document, or a tool result can steer it. Every
+control here assumes the agent will eventually attempt something it shouldn't, and puts the refusal
+where the agent can't influence it.
 
-This page is the source of truth for each control's status; the evidence behind each status is in
-[testing.md](testing.md).
+Source of truth for each control's status; evidence is in [testing.md](testing.md).
 
 | Mark | Meaning |
 |---|---|
 | ✅ | Built, and tested here. The row names the test |
+| ⚠️ | Tested here, with a gap the row names (a finding, not a missing build) |
 | 🔲 | Built or configured, not tested here |
 | ⏳ | Not built |
 
@@ -33,7 +33,7 @@ What the design defends against, and where the defence sits:
 | **A manipulated agent changes data** | The model is steered into setting a forecast to a wrong value | The user's own database permission (only Budget Editors can write), bounded parameters, and the writer recorded by the database. No approval gate and no change history | 🔲 Gated by permission only ([ai-safety.md](ai-safety.md#the-write-tool-as-built)) |
 | **A runaway or abusive agent floods a system** | A loop, or bulk extraction | A rate limit per agent and user | ✅ |
 | **A tool result steers the model** (indirect prompt injection) | A database row containing instructions | Limits the damage, doesn't prevent it: the agent can still only call its own tools, as the user. See [ai-safety.md](ai-safety.md) | ✅ Seven payload types ignored in 25 Preview trials ([probe 1](ai-safety.md#probes)); one model, limited evidence |
-| **A maker attaches another agent's connector** | The borrowed connector brings that agent's tools | Not prevented by the gateway: the connector carries that agent's client app, which is what the gateway trusts. Restrict who can use each connector | ⏳ Confirmed as a gap |
+| **A maker attaches another agent's connector** | The borrowed connector brings that agent's tools | Not prevented by the gateway: the connector carries that agent's client app, which is what the gateway trusts. Restrict who can use each connector | ⚠️ Confirmed with a real agent |
 | **A maker adds an uncontrolled tool or knowledge source** | A third-party MCP server, or a public website | The environment's data policy, an allow-list ([governance.md](governance.md)) | ✅ |
 | **Secrets leak** | A client secret in a repository or a connector | There are none: managed identities with federated identity credentials throughout | ✅ |
 | **Payloads leak through logs** | Tool results in telemetry | Request and response bodies aren't logged; Copilot Studio sensitive properties are off. **Tool arguments may still be logged** if they travel in the query string and the gateway log records the URL; on the rapid profile no gateway row held a query string. Conversation transcripts hold tool results | ✅ bodies / ⏳ arguments and transcripts ([observability.md](observability.md#what-is-recorded-and-what-is-not)) |
@@ -162,7 +162,7 @@ means something only if nobody else can get a token as that app.
 
 **The connector carries the agent's client app.** A maker who attaches another agent's connector to their own
 agent gets that agent's tools, and the audit trace then names the connector's agent. This was
-confirmed with a real agent and is not prevented by the gateway ⏳. Restrict who can use and share each
+confirmed with a real agent and is not prevented by the gateway ⚠️. Restrict who can use and share each
 connector, and cross-check the audit trace against Copilot Studio telemetry
 ([governance.md](governance.md#known-governance-gaps)).
 

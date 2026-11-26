@@ -1,10 +1,10 @@
 # Private networking
 
-How to connect Copilot Studio agents to internal REST APIs, published as MCP tools through Azure API
-Management, without any public data-plane endpoint on the API side. The page is general guidance;
-callouts marked **In this demonstration** describe what this repository's **secure profile** deploys.
-The rapid profile has none of this network (a public gateway, and SQL behind a firewall rule); it exists
-for development only ([architecture.md](architecture.md#the-two-deployment-profiles)).
+How Copilot Studio agents reach internal REST APIs (as MCP tools through Azure API Management) with no
+public data-plane endpoint on the API side. General guidance; callouts marked **In this demonstration**
+describe the **secure profile**. The rapid profile has none of this network (public gateway; SQL behind
+a firewall rule) and is for development only
+([architecture.md](architecture.md#the-two-deployment-profiles)).
 
 ![Reference topology: Copilot Studio reaches an internal-mode API Management instance through a Power Platform delegated subnet; API Management reaches backends only through private endpoints; egress to Microsoft Entra ID and Microsoft Graph leaves through a hub firewall.](diagrams/networking-topology.svg)
 

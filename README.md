@@ -6,7 +6,8 @@ those systems securely, with **Azure API Management as the gateway** between the
 private, agents hold no credentials, each agent gets only the tools it is approved for, and every
 call is recorded.
 
-The proof of concept was built and tested to answer five questions:
+The proof of concept was built and tested to answer five questions. The first four have dedicated
+evidence pages. The fifth is only partly answered: safety probes ran; product Evaluate did not.
 
 | Question | Page |
 |---|---|
@@ -14,18 +15,20 @@ The proof of concept was built and tested to answer five questions:
 | Who decides what an agent may do, and how is it stopped? | [Governance](docs/governance.md) |
 | Can we see what every agent did, for whom? | [Observability](docs/observability.md) |
 | What happens when the model is wrong, manipulated or silently failing? | [AI safety](docs/ai-safety.md) |
-| How do we know the agent is performing, and that a change did not make it worse? | [Evaluations](docs/testing.md#testing-the-agent-evaluations) |
+| How do we know the agent is performing, and that a change did not make it worse? | [Evaluations](docs/testing.md#testing-the-agent-evaluations) — **incomplete** (probes once on one model; Copilot Studio Evaluate not run) |
 
 The evidence for every claim, and the claims not yet tested, are in [docs/testing.md](docs/testing.md).
+Which results match the **current** layout (domain MCP servers, three backends) is in that page's
+[currency table](docs/testing.md#currency-of-the-evidence).
 
 ## The problem
 
 Contoso's information lives in many internal systems: a directory, a finance database, a budgeting and
 forecasting tool, a service desk, an ageing HR system and more. Each has its own sign-in and interface.
-Many tasks mean pulling data from several of them then reasoning over it with internal policy to form a decision.
+Many tasks mean pulling data from several of them, then reasoning with internal policy to decide.
 
-Contoso wants Copilot Studio agents to help its staff with that work. Early experiments showed that an
-agent has to reach internal data and systems to be useful beyond answering general questions.
+Contoso wants Copilot Studio agents to help with that work. Early experiments showed that an agent has
+to reach internal systems to be useful beyond answering general questions.
 
 Connecting each agent directly to each system creates problems that grow with every agent and every
 system:
@@ -120,6 +123,11 @@ The Employee Assistant can't answer "What cost centres are there?": the tool isn
 [docs/concepts.md](docs/concepts.md) explains these from the beginning.
 
 ## What has been tested
+
+**Currency:** scripted tests on **rapid**, and Copilot Studio on **rapid** with the Microsoft Copilot
+harness, match today's domain MCP servers and three backends. Secure-profile Copilot Studio and
+fault injection are an **earlier** layout (one MCP server per agent; directory and finance still one
+backend). Detail: [testing.md](docs/testing.md#currency-of-the-evidence).
 
 | Surface | Result |
 |---|---|
@@ -222,7 +230,7 @@ backends.
 | [add-mcp-tool-to-agent.md](docs/add-mcp-tool-to-agent.md) | Step by step: connect a Copilot Studio agent to its MCP server |
 | [operate.md](docs/operate.md) | Adding tools, agents and users; from what the agent shows to the layer at fault |
 | [standard-harness-exploration.md](docs/standard-harness-exploration.md) | What the standard harness is good at and where it struggles, from Preview-only tests; the run records are in [standard-harness-runs.md](docs/standard-harness-runs.md) |
-| [going-further.md](docs/going-further.md) | Whether an agent is the right tool, and which build tool; decisions and limits before building on this; agents without a user; Microsoft's AI gateway offerings |
+| [going-further.md](docs/going-further.md) | Whether an agent is the right tool; example scenarios (document completeness, triage, drafts…); instructions vs knowledge; agents without a user; Microsoft's AI gateway offerings |
 
 AI coding agents setting the project up should also read [AGENTS.md](AGENTS.md).
 

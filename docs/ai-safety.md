@@ -1,12 +1,11 @@
 # AI safety
 
 The language model is the one component in this design that can't be made to follow a rule. It can be
-wrong, it can be manipulated, and it can fail without saying so. This page separates what the design
-guarantees **whatever the model does** from what still **depends on the model**, and says which of
-each has been tested.
+wrong, manipulated, or fail silently. This page separates what the design guarantees **whatever the
+model does** from what still **depends on the model**, and which of each has been tested.
 
-Status marks are the same as in [security.md](security.md): ✅ built and tested, 🔲 built or configured
-but not tested here, ⏳ not built. A fourth, ⚠️, means tested, with a gap the row names.
+Status marks are the same as in [security.md](security.md): ✅ built and tested, ⚠️ tested with a named
+gap, 🔲 built or configured but not tested here, ⏳ not built.
 
 ## What holds whatever the model does
 
@@ -76,7 +75,7 @@ The tool is the unit of safety. A narrow tool can't be misused widely, however t
 | **Read-only by default** | A wrong read is recoverable; a wrong write may not be | Every tool is `GET` except `budgeting_update_cost_centre_forecast` (`PUT`), a deliberate and ungated exception ✅ |
 | **Small, bounded responses** | A large result floods the model's context and enables bulk extraction | Spending is returned as totals by category, not rows. No general size cap ⏳ |
 | **The description says what the tool returns and when to use it** | The model chooses from it. It is not the place for instructions or secrets | In the OpenAPI files in [backend/](../backend/) 🔲 |
-| **A tool list reveals capability** | An agent that can see a tool's name and description knows it exists, even if the call would be refused | An agent sees only the tools of the servers it uses; a server lists all its tools to every agent that uses it, so keep tools of different sensitivity on different servers. Here the budgeting write shares the `finance` server with the read tools, which this advice would separate 🔲 |
+| **A tool list reveals capability** | An agent that can see a tool's name and description knows it exists, even if the call would be refused | An agent sees only the tools of the servers it uses; a server lists all its tools to every agent that uses it, so keep tools of different sensitivity on different servers. Here the budgeting write shares the `finance` server with the read tools — a deliberate demo trade-off ([architecture.md](architecture.md#design-decisions)), which this advice would separate 🔲 |
 
 ## Silent failure
 

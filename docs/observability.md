@@ -1,8 +1,8 @@
 # Observability
 
-How to see what agents are doing, for whom, and whether they are staying inside their limits.
-Everything lands in **one Log Analytics workspace**, so a tool call can be followed across layers.
-Who decides and who reviews is in [governance.md](governance.md).
+What agents are doing, for whom, and whether they stay inside their limits. Everything lands in **one
+Log Analytics workspace**, so a tool call can be followed across layers. Who decides and who reviews
+is in [governance.md](governance.md).
 
 > Queries marked ✅ were run against a live deployment and returned what they describe. Those marked
 > 🔲 are written to the documented schema and not yet run.

@@ -1,15 +1,14 @@
 # Connect a Copilot Studio agent to its MCP server
 
-This page shows how to connect a Copilot Studio agent to an MCP server in API Management with **no client
-secret**. The agent's connector proves itself with a managed identity, and Microsoft Entra ID trusts that
-identity through a federated identity credential. The maker does the work in Copilot Studio and Power
-Apps; Terraform does the Entra ID side.
+Connect a Copilot Studio agent to an MCP server in API Management with **no client secret**. The
+connector proves itself with a managed identity; Entra ID trusts that identity through a federated
+identity credential. The maker works in Copilot Studio and Power Apps; Terraform does the Entra side.
 
-An agent needs one MCP server for each business domain it uses, so repeat steps 2 to 5 for each server,
-always with the agent's own client ID. (The Finance Assistant uses two: `directory` and `finance`.)
+One MCP server per business domain the agent uses — repeat steps 2 to 5 for each, always with that
+agent's own client ID. (The Finance Assistant uses two: `directory` and `finance`.)
 
-This page covers steps 4 to 7 of [Stand up the stack](deploy.md#stand-up-the-stack), which gives the full
-order of operations from Terraform to the first test. For vocabulary, see [concepts.md](concepts.md).
+This is steps 4 to 7 of [Stand up the stack](deploy.md#stand-up-the-stack). Vocabulary:
+[concepts.md](concepts.md).
 
 ## Before you start
 

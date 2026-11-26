@@ -3,6 +3,23 @@
 Every ✅ in these documents points here. This page says how to run the tests, what they showed, and,
 just as important, [what has not been tested](#evidence-gaps).
 
+## Currency of the evidence
+
+Not every ✅ is against today's layout. Prefer results marked **current** when deciding whether a
+control still holds.
+
+| Surface | Profile | Layout | Currency |
+|---|---|---|---|
+| Scripts (`smoke.py`, `pressure.py`) | rapid | Domain MCP servers (`directory`, `finance`); three backends (directory, finance, budgeting) | **Current** (smoke re-run 2026-11-17 after the directory Function split) |
+| Scripts | secure | Same policies; private network. Last full private run was **before** the directory Function split | **Partly stale** — bypass checks not repeated since |
+| Copilot Studio, Microsoft Copilot harness | rapid | Domain MCP; two connectors; five tools; Sandbox + pay-as-you-go | **Current** |
+| Copilot Studio, standard harness + fault injection | secure | One MCP server per agent; directory and finance still one backend | **Earlier design** — re-run before relying on private-path agent evidence |
+| Standard harness exploration | none (no gateway) | Fictional documents; Outlook and Office 365 Users | **Current** for harness behaviour only |
+
+Rows in [Results](#results) that depend on the earlier secure layout are marked "earlier design". All
+gateway tests used one user account, apart from the second-user probe at the gateway
+([probe 7](#probe-7-a-second-user-gateway-level-2026-11-17)).
+
 ## How the evidence was gathered
 
 | Surface | What it is | Proves |
@@ -20,14 +37,6 @@ with a federated identity credential. Public-client sign-in is **off by default*
 anyone in the tenant act as an agent, so a test run needs a window:
 `terraform -chdir=$P apply -var allow_test_sign_in=true`, run the scripts, then apply again without the
 variable.
-
-**Currency of the evidence.** The script results and the Microsoft Copilot harness run on the rapid profile
-(a Sandbox with pay-as-you-go) are against the code of that day, including the domain MCP servers. The smoke
-test was re-run on 2026-11-17 after the directory moved to its own Function app, so there are now three
-backends. The secure-profile Copilot Studio and fault-injection results (standard harness) were gathered
-on an earlier build, with one MCP server for each agent and one backend for directory and finance; results
-that depend on that layout are marked "earlier design". Re-run them before relying on them. All tests used
-one user account, apart from the second-user probe at the gateway ([probe 7](#probe-7-a-second-user-gateway-level-2026-11-17)).
 
 ## Running the tests
 
@@ -425,12 +434,15 @@ an observability / connection failure, not a quality win.
 
 ### Status in this proof of concept
 
+Agent quality is **not** at the same evidence level as the gateway controls. Use this table, not the
+README's five-question framing alone, when judging whether the agent is ready to proceed.
+
 | Capability | Status |
 |---|---|
 | Manual Preview / demo conversation | ✅ Used in the lab |
 | Gateway smoke and pressure tests | ✅ [Results](#results) |
-| Copilot Studio Evaluate | Described above; 🔲 not run as evidence |
-| Probe scorecard 1–9 executed | 🔲 Each run once on one model, probe 7 at the gateway only; see [ai-safety.md](ai-safety.md#probes) |
+| Copilot Studio Evaluate | 🔲 Described above; not run as evidence (tab failed to load) |
+| Probe scorecard 1–9 executed | ⚠️ Each probe run once on one model (probe 7 at the gateway only); not enough for a go/no-go. See [ai-safety.md](ai-safety.md#probes) |
 | Tool-choice / faithfulness measured | 🔲 |
 | Kit rubrics / Agent Review Pipeline | Going further only |
 

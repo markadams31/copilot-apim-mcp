@@ -1,13 +1,12 @@
 # Going further: what to decide before building on this
 
-This is a proof of concept. It shows that Copilot Studio agents can call internal APIs through API
-Management without exposing those systems to the internet, and it tests that claim
-([testing.md](testing.md)). It is not something to put into production as it stands. This page lists
-what a team would have to decide to carry the pattern further, and two directions it could take.
+This is a proof of concept: Copilot Studio agents can call internal APIs through API Management without
+exposing those systems to the internet, and that claim is tested ([testing.md](testing.md)). It is not
+production as it stands. This page covers what to decide before carrying the pattern further, plus two
+directions it could take (agents without a user; Microsoft's AI gateway offerings).
 
-What has not been tested is listed in [testing.md](testing.md#evidence-gaps). Gaps in specific controls
-are in [security.md](security.md), [governance.md](governance.md#known-governance-gaps) and
-[ai-safety.md](ai-safety.md).
+Gaps: [testing.md](testing.md#evidence-gaps), [security.md](security.md),
+[governance.md](governance.md#known-governance-gaps), [ai-safety.md](ai-safety.md).
 
 ## Is an agent the right tool?
 
@@ -79,6 +78,30 @@ predictable than a full agent. Microsoft also positions the **standard harness**
 interactions with few steps, and the **Microsoft Copilot harness** for long, multi-step work, which it
 bills from the first build ([deploy.md](deploy.md#which-harness-and-copilot-credits)).
 
+### Example scenarios
+
+These are the kinds of work Copilot Studio is a good fit for: **variable unstructured input**, a
+**checklist or policy in language**, and a **structured result** a person or a fixed workflow can act
+on. They are weak fits for traditional coding because the input shape and the wording of "good enough"
+keep changing. Prefer a short assess step that returns fixed labels or fields; keep irreversible
+actions and hard routing rules outside the model
+([agents that run without a user](#agents-that-run-without-a-user)).
+
+| Scenario | Pain today | What the agent does | What stays deterministic |
+|---|---|---|---|
+| **Document completeness** | Incomplete packs bounce back to the originator and stall processing | Read the file (or extracted text), check against a required-fields list, return missing / present / unclear per field | Reject/accept rules, who to notify, and the checklist itself (in instructions or knowledge) |
+| **Inbox or case triage** | People skim every item to decide urgency or queue | Classify into a fixed label set (for example High / Normal / Low); optionally stamp an Outlook category | Category names, mailbox rules, and which team owns each label — [tried here](#agents-that-run-without-a-user) on a published agent with an email trigger |
+| **Exception / policy check** | Reviews miss buried conflicts with a written policy | Flag passages that may breach a short policy list; cite the clause | The policy text; final allow/deny |
+| **Meeting or email → next actions** | Decisions and owners are buried in long threads | Propose action items with owner and due date when stated; mark gaps | Creating the tasks only after a person confirms |
+| **Draft for a human to send** | First replies and escalation briefs take time to start | Draft a reply or one-page brief from the thread and a tone guide | Sending, and any system write |
+| **Ticket enrichment** | Agents re-read the same messy ticket to categorise it | Summarise, suggest category and a knowledge article; leave the assignment | The category taxonomy and the assign step |
+
+**Not these (use automation or search instead):** routing by a fixed vendor or cost-centre code; FAQ
+answers with no action; multi-step chains nobody will check between steps.
+
+When trying one: measure the current bounce/rework rate first, keep the output schema tiny, and stop
+the trigger when the trial ends (a published trigger bills per run).
+
 **What testing the standard harness showed** ([findings](standard-harness-exploration.md): Preview only,
 fictional data, a snapshot). It suits the left column above: finding and summarising across a few
 documents, with sources; a short chain of tools with a person approving the write; and a recipient or
@@ -91,6 +114,46 @@ calculates. Four things make a pilot look better than it is:
 - **Undated documents that disagree** are sometimes answered from one of them without a warning.
 - **The approval prompt shows only the maker's wording**, not what will be sent, so the user approves
   without seeing the content.
+
+### Instructions vs knowledge
+
+Both can hold text the model uses. They are not interchangeable: instructions are always in play;
+knowledge is retrieved when the turn seems to need it, and only after the index has caught up.
+
+| Put in **instructions** | Put in **knowledge** |
+|---|---|
+| Role, tone, and hard rules for every turn | Reference material: policies, SLA tables, playbooks |
+| Output shape (for example fixed labels or JSON fields) | Long or growing lists (VIP domains, example cases) |
+| Safety and refusal behaviour | Content other people will edit without opening the agent |
+| A short summary of when to use each tool | Detail the agent should cite when classifying or answering |
+
+**Heuristic:** if the agent must obey it every time, keep it short and put it in instructions. If it
+should look the content up when classifying or answering, put it in knowledge.
+
+**Checklist agents need acceptance rules, not only “extract what’s clear.”** On a Contoso travel-request
+completeness agent (standard harness, Preview only, unstructured emails), a short extract-what’s-stated
+instruction set scored **26/34** on a pressure suite aimed at soft amounts, bad IDs, reversed dates, and
+vague purpose/approver wording. The same agent and cases, after the instructions named **what counts as
+present for each field** (for example `CC-` + digits, a person not a role or email, no “about 2k”, no
+return-before-depart), scored **34/34**. One draft of those rules over-rejected a valid line (“Rough total
+is AUD 2,850”) until the amount rule required digits, not the absence of the word “rough.” So tighten with
+a pressure set: the gain is real, and over-tight wording shows up as false incompletes on easy cases.
+
+Trade-offs that showed up in testing:
+
+- Instructions consume a fixed budget and apply on every message. Narrow wording can refuse work the
+  knowledge could answer ([findings](standard-harness-exploration.md)).
+- Knowledge can miss: Ready is not the same as searchable, and a turn may not retrieve the right file.
+  For a just-added document, wait and re-test ([operate.md](operate.md#troubleshooting-from-symptom-to-layer)).
+- Duplicating the same policy in both often looks fine on easy cases and wastes instruction space. Prefer
+  one home; use a deliberate bake-off when cases are hard (buried deadlines, conflicting signals) and you
+  need to know which home actually drives the answer. A Contoso priority-triage bake-off on the same gold
+  set scored the same for full instructions vs thin instructions plus a Ready knowledge file (priority
+  perfect; one soft-deadline miss each, in opposite directions). Equal scores there meant both homes were
+  well written and retrieval was warm — not that the two are interchangeable.
+
+Don't put behavioural instructions inside a tool description either
+([operate.md](operate.md#add-a-tool-a-new-rest-operation)): say what the tool returns and when to use it.
 
 **A person reviewing the output isn't a safeguard by itself.** In one study, doctors who had become used
 to AI assistance detected less without it. In a survey, knowledge workers more confident in AI reported
@@ -163,11 +226,13 @@ Sources: [virtual network concepts for API Management](https://learn.microsoft.c
 
 ## Assumptions worth challenging
 
-Choices made because they were the simplest to prove. None has been tested against its alternative.
+Choices made because they were the simplest to prove. The domain-server pattern was exercised with real
+agents ([testing.md](testing.md#microsoft-copilot-harness-rapid-profile)); **none of the alternatives
+has been built or compared**.
 
 | Assumption here | Why it may not hold | The alternative to weigh |
 |---|---|---|
-| **One MCP server per business domain, one client app per agent, and one connector per agent and server** | Each tool is defined once, but an agent that spans domains needs several connectors, each with its own federated identity credential and a connection for every user. Servers list all their tools to every agent that uses them, so a server mixing tools of different sensitivity over-discloses. Not tested with real agents | **One server per backend system** (finer, more connectors), or **one per agent** (an exact tool list, but shared tools are duplicated). The harness also caps how many servers run at once in a conversation |
+| **One MCP server per business domain, one client app per agent, and one connector per agent and server** | Each tool is defined once, but an agent that spans domains needs several connectors, each with its own federated identity credential and a connection for every user. Servers list all their tools to every agent that uses them, so a server mixing tools of different sensitivity over-discloses (here the budgeting write sits on the `finance` server with the read tools) | **One server per backend system** (finer, more connectors), or **one per agent** (an exact tool list, but shared tools are duplicated). The harness also caps how many servers run at once in a conversation |
 | **The connector carries the agent's client app** | A maker who attaches another agent's connector gets that agent's tools. Confirmed by test | Restrict who can use or share each connector, and cross-check against Copilot Studio telemetry |
 | **Each REST operation becomes one tool, unchanged** | Tool descriptions decide when the model calls a tool, and REST operations are rarely shaped for that | Design tools for the task, and describe them for the model |
 | **One tool per access model** | It shows the mechanism, not how it behaves across many systems | [architecture.md](architecture.md#access-models-delegated-and-app-only) |
